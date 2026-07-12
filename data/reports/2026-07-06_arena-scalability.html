@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>The parallel arena, rendered — and did rig count taint training?</title>
+<style>
+:root{color-scheme:light dark}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+max-width:880px;margin:24px auto;padding:0 16px;color:#222;line-height:1.6;background:#fbfaf7}
+h1,h2,h3,h4{color:#1a1a1a;line-height:1.25;letter-spacing:-0.01em}
+h1{font-size:1.9rem} h2{font-size:1.4rem;border-bottom:2px solid #e0d9c8;padding-bottom:4px;margin-top:2em}
+h3{font-size:1.15rem}
+a{color:#8a6d1f} a:hover{color:#6f5618}
+table{border-collapse:collapse;margin:14px 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid #d8d0bf;padding:6px 10px;text-align:left} th{background:#f0ece2}
+pre{background:#f4f1ea;padding:12px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.45}
+code{background:#f0ece2;padding:1px 5px;border-radius:4px;font-size:0.92em}
+pre code{background:none;padding:0}
+blockquote{margin:12px 0;padding:2px 14px;border-left:3px solid #cbb98e;color:#555;background:#f7f3ea}
+img{max-width:100%;height:auto;border-radius:6px} hr{border:none;border-top:2px solid #e0d9c8;margin:28px 0}
+ul,ol{padding-left:1.4em} li{margin:3px 0}
+.rc-foot{margin-top:40px;padding-top:12px;border-top:1px solid #e0d9c8;color:#9a9387;font-size:12px}
+@media(prefers-color-scheme:dark){
+body{background:#14130f;color:#ded8cc} h1,h2,h3,h4{color:#f0ebdf}
+h2{border-bottom-color:#33302a} a{color:#d6b25a} a:hover{color:#e6c876}
+th,td{border-color:#3a352b} th{background:#242118} pre{background:#1c1a15}
+code{background:#242118} blockquote{background:#1c1a15;border-left-color:#5a5040;color:#b8b1a2}
+hr{border-top-color:#33302a} .rc-foot{border-top-color:#33302a}}
+.mermaid{background:none;padding:8px 0;margin:16px 0;text-align:center;overflow-x:auto;line-height:normal}
+.mermaid:not([data-processed]){color:transparent;min-height:1em}
+</style></head>
+<body>
+<h1 id="the-parallel-arena-rendered-and-did-rig-count-taint-training">The parallel arena, rendered — and did rig count taint training?</h1>
+<p><em>2026-07-06. Companion to <a href="2026-07-04_isaaclab-program.html">the Isaac Lab program</a>
+(Stage T/T2 results) and <a href="2026-07-04_training-technique.html">the training technique doc</a>.</em></p>
+<p>Two things happened in one investigation: David asked for a screenshot of the
+many-rig training arena, and building it exposed a scalability question that
+deserved a straight answer — <strong>if the render scene shows reliability issues at
+16 rigs, did the same apply while we were training?</strong> (Spoiler: no — measured
+below.)</p>
+<h2 id="the-arena">The arena</h2>
+<p><code>tools/render_arena.py</code> — a grid of PickRigs (default 16, 0.15 m spacing)
+running the Stage T2 champion θ in parallel inside the full-env boot, each
+with a gauntlet-panel jitter, grid skins, arm hidden. This run: <strong>12/16
+successful picks, 6/16 full carries.</strong></p>
+<p><img alt="carry" src="../2026-07-06/arena/arena_hero_carry.png"></p>
+<p><em>Mid-carry: washers hanging from the grippers across the arena. A rolled-up
+washer is a 2.5 mm edge-on disc — the corner camera keeps the discs facing
+the lens; wide overhead angles hide them behind the finger pillars.</em></p>
+<p><img alt="press" src="../2026-07-06/arena/arena_hero_press.png"></p>
+<p><a href="../2026-07-06/arena/arena.mp4">full run video</a></p>
+<h2 id="what-it-took-the-solver-budget-cliff">What it took: the solver-budget cliff</h2>
+<p>The first arena run scored 0/16 with bizarre symptoms: B fingers followed
+their carriers down but <strong>stayed on the beds during the rise</strong>, triggers never
+fired. Per-rig telemetry pinned it: with ~4,500 joints in the env scene
+(16 rigs × ~280 + the arm articulation), the B-spring prismatic joints
+starve — the constraint holds when gravity helps and yields when it doesn't.</p>
+<p><strong>Fix</strong>: per-body solver budgets — <code>solverPositionIterationCount = 32</code> on the
+sprung finger and washer. With it, triggers fire and the maneuver completes.
+Two more render-craft rules landed in the tool: drive the fingers <strong>every
+physics step</strong> in the env (the training-side dec-4 cadence loses the catch
+there), and shoot from ~35° off the grip axis.</p>
+<h2 id="the-training-integrity-ab">The training-integrity A/B</h2>
+<p>Training runs in pick_lab's <strong>own standalone World</strong>, not the env scene — but
+"24 rigs was fine" had never been isolated from jitter and slot effects. So:
+same θ (Stage T cand0), same zero-jitter panel slot, same bed position,
+<strong>RIGS=1 vs RIGS=24</strong>, traces on.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>rig0 alone</th>
+<th>rig0 with 23 neighbours</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>reward</td>
+<td>4.04</td>
+<td>4.00</td>
+</tr>
+<tr>
+<td>success</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>lift</td>
+<td>31.0 mm</td>
+<td>28.9 mm</td>
+</tr>
+<tr>
+<td>trajectory diff</td>
+<td>—</td>
+<td><strong>mean Δz 0.13 mm</strong> (max 1.33 mm, mid-roll-up transient)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Verdict: rig count does not degrade the lab's physics — training was
+clean.</strong> The solver cliff is a property of the env scene (arm articulation +
+scene solver config), which training never used; single-rig env replays were
+always fine because one rig's ~300 joints don't strain it.</p>
+<p>Two footnotes the same A/B re-confirmed:</p>
+<ol>
+<li>The 24-rig run still failed 6/24 — at specific <strong>bed positions</strong>, including
+   two zero-jitter rigs, while identically-jittered rigs elsewhere succeeded.
+   That is the tile model's known slot-phase chaos (present throughout
+   training; the reason selection uses worst-2-mean gauntlets), not solver
+   load.</li>
+<li>The env scene under-solving compliant joints plausibly contributes to the
+   lab↔env B-spring timing lead found in the
+   <a href="../2026-07-05/charts/tracediff.png">trace-diff</a> — aligning scene solver
+   settings (task open) may close the transfer gap and the env-side
+   reliability cliff in one move.</li>
+</ol>
+<p class="rc-foot">Rendered from <code>2026-07-06_arena-scalability.md</code> · rc-doc</p>
+
+</body></html>

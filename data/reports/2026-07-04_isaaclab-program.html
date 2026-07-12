@@ -1,0 +1,121 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Soft-surface materials report — 2026-07-04</title>
+<style>
+body{font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:880px;
+margin:24px auto;padding:0 16px;color:#222;line-height:1.55;background:#fbfaf7}
+h1,h2,h3{color:#1a1a1a} h2{border-bottom:2px solid #e0d9c8;padding-bottom:4px}
+table{border-collapse:collapse;margin:12px 0;font-size:14px}
+th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}
+th{background:#f0ece2} pre{background:#f4f1ea;padding:12px;border-radius:6px;
+overflow-x:auto;font-size:13px} code{background:#f0ece2;padding:1px 5px;
+border-radius:3px;font-size:0.92em} hr{border:none;border-top:2px solid #e0d9c8;
+margin:28px 0}
+</style></head><body>
+<h1>Isaac Lab program — co-optimizing material + technique</h1>
+<p><i>The scale jump from the <a href="2026-07-04_training-technique.html">training-technique doc</a> §5, with David's system-level objective. Written as the prereqs install (2026-07-04 night) so the rest can run unattended.</i></p>
+<h2>The reframe: optimize the SYSTEM, not just the maneuver</h2>
+<p>Until now the material was hand-designed and the technique learned on top of it. New program: <b>the material parameters are decision variables too.</b></p>
+<h3>Stage M — material optimization (first gate)</h3>
+<p>David's objective, verbatim intent: <i>a finger press on one side shall raise the opposite end of the part so it meets the opposing finger at a height that allows a clean pickup — say 5 mm.</i></p>
+<p>Formalized (the <b>5 mm meet condition</b>):</p>
+<pre>Given the canonical press (A at ~55% over the near rim, pressed 3 mm,
+held 0.5 s):
+  target:  far-rim TOP height  = +5 mm above the rest surface,
+           steady (|d(height)/dt| &lt; 2 mm/s over the hold),
+           at the opposing finger&#x27;s x-station (so B touches it mid-face)
+  search:  material θm = (k_cell, couple ratio, damping, couple_damp
+           [, thickness t via the neoprene() mapping])
+  score:   -|far_rim_height - 5mm|  - instability penalty (oscillation of
+           the rim height during hold)  - realism penalty (ℓ outside the
+           measured foam band, §materials report)</pre>
+<p>This inverts the earlier finding that the realistic dish <i>swallows</i> the washer: instead of accepting whatever rim rise the material gives, we ask which material presents the part to the second finger — the material becomes part of the gripper. The washer is CAPTIVE at touch height by construction, which is exactly the regime the smooth-ramp winner (early-close + tall rise) wants.</p>
+<p><b>Gate M</b>: a material θm whose canonical press yields 5 ± 1 mm steady far-rim rise across the 8-jitter panel (placement ±1 mm, height ±0.5 mm).</p>
+<h3>Stage T — technique training on the achieved material</h3>
+<p>Only after Gate M: re-train the maneuver (CEM warm start from the smooth-ramp winner, then the PPO residual once vectorized) on the optimized material. Smoothness reward unchanged (violence &lt; failure, escape worst). Expectation: with the part <i>presented</i> at 5 mm, the technique's job collapses to touch → pinch → rise; the 12/24-under-jitter frontier should move substantially.</p>
+<h3>Stage MT — alternation (optional, after both)</h3>
+<p>1–2 rounds of coordinate ascent: refit material under the trained technique's actual press distribution, then fine-tune technique. Stop when neither moves.</p>
+<h2>Why Isaac Lab for this</h2>
+<ul><li>Material search × technique search is a <i>product</i> of spaces — needs the 1000-env width, not 24 rigs.</li><li>Materials differ per env clone (DR over k/couple = the M-stage search is literally a domain-randomization sweep with per-env logging).</li><li>Tensor state I/O removes our measured #1 bottleneck (Python USD writes).</li><li>The env-vs-lab registration gap dissolves: ONE env definition serves both training and evaluation.</li></ul>
+<h2>Prereq checklist (the part needing David present)</h2>
+<table border="0" cellspacing="0">
+<tr><th>item</th><th>status</th></tr>
+<tr><td>Disk (need ~40 GB)</td><td>✓ 734 GB free</td></tr>
+<tr><td>docker group (no sudo needed)</td><td>✓</td></tr>
+<tr><td>NVIDIA driver 595.71 + runtime</td><td>✓ (already runs Isaac Sim 6.0)</td></tr>
+<tr><td>Version pairing</td><td>✓ Isaac Lab <b>3.0.0-beta2</b> ↔ Isaac Sim 6.0.x (our stack)</td></tr>
+<tr><td>Image <code>nvcr.io/nvidia/isaac-lab:3.0.0-beta2</code></td><td>✓ pulled (48.6 GB)</td></tr>
+<tr><td>GPU smoke: bundled task trains headless</td><td>✓ <b>Cartpole 50 PPO iters in 11.2 s</b>, GPU peak 32 % / 3 GB</td></tr>
+<tr><td>Repo mount + runner</td><td>✓ <code>docker/run_lab.sh</code> (entrypoint bypassed — the stock wrapper trips on a deprecated torch ext; training path unaffected)</td></tr>
+</table>
+<p><b>ALL PREREQS GREEN (2026-07-05 00:20). Nothing required David's presence — the remaining program runs unattended.</b></p>
+<p>No system-level sudo items identified — the docker-first method carries over unchanged (<code>--runtime=nvidia</code>, <code>NVIDIA_DRIVER_CAPABILITIES=all</code>, root in container + ownership reclaim, named cache volumes).</p>
+<h2>Overnight results (2026-07-05, unattended)</h2>
+<p><b>Port: WORKING, parity PASSED.</b> <code>lab/press_sweep.py</code> runs the full rig (anchored foundation + washer + bound gripper) at N envs on <code>push-grasp:lab</code>. CPU parity vs pick_lab: end-of-press washer sink −2.39 mm vs −2.8 mm reference, env-std 0.22 mm. Six port lessons are recorded in the commit (boot order, cloner APIs, Lab reset teleports, view-driven kinematics producing no contact, name ordering) — each cost one debug boot.</p>
+<p><b>Sweep 1 (256 materials, fixed press): zero Gate-M candidates</b> — rims cluster at 0–1.6 mm; the fixed 2.8 mm / 50 %-overhang press lacks leverage.</p>
+<p><b>Sweep 2 (material × press system grid): one apparent hit</b> (k300 / ratio 10 / d12 / press 3 mm / a_over 0.70 → rim 4.90 ± 0.21 mm)…</p>
+<p><b>…which the validation panels refuted.</b> Jitter panel: 0/24. Worse, the slot-averaged rerun (each config × 8 grid slots) showed identical configs swinging <b>±10 mm by env slot alone</b> — the see-saw regime that lifts the rim to +5 mm is chaotically bistable (pop vs swallow) in the discrete tile model; higher damping worsens it; the only slot-stable config presents at −3.2 mm.</p>
+<p><b>Conclusion — Gate M as specified is a measured NEGATIVE result:</b> the discrete spring-tile material has <b>no stable +5 mm static equilibrium</b>. The stable branch presents <i>below</i> surface; the raised branch is a knife-edge.</p>
+<h3>Visual diagnostics (charts, sections, videos)</h3>
+<p><img src="../2026-07-05/charts/arena_heatmap.png" alt="the test arena" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><i>The arena: 256 simultaneous press tests (one system config per cell); the blue-boxed cell is the lone apparent 5 mm hit.</i></p>
+<p><img src="../2026-07-05/charts/sweep_landscape.png" alt="sweep landscape" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><img src="../2026-07-05/charts/bistability.png" alt="bistability" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><i>The refutation: identical configs, 8 scene slots each — the +5 mm branch is a knife-edge; damping widens the spread; k420 d16 threw washers.</i></p>
+<p><img src="../2026-07-05/charts/gate_panel.png" alt="winner on the jitter panel" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><img src="../2026-07-05/charts/cross_sections.png" alt="cross-sections" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><i>Cross-sections at end-of-press (parameters on each panel). Two NEW insights only visible here: (1) <b>finger B pre-crushes the landing zone</b> — bound to A's depth, it presses the right-side tiles down ~4 mm exactly where the far rim should rise → a shorter B fingertip (staying above surface during the press) is a concrete design fix; (2) the k420 "pop" branch is really an EJECTION (washer to +90° or clean off the pad).</i></p>
+<p>Failure videos (full-env replays of the three characteristic behaviours): <a href="../2026-07-05/video_gateM_winner/pick.mp4">winner-config</a><video controls preload="metadata" src="../2026-07-05/video_gateM_winner/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video> — swallow (tilt 5.6°, rim never presents) · <a href="../2026-07-05/video_gateM_eject/pick.mp4">ejection-config</a><video controls preload="metadata" src="../2026-07-05/video_gateM_eject/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video> — washer flung airborne, lands vertical (88°) · <a href="../2026-07-05/video_gateM_stable/pick.mp4">stable-swallow</a><video controls preload="metadata" src="../2026-07-05/video_gateM_stable/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video> — <i>context caveat:</i> half-popped to 58° in the full env though it swallows cleanly in the Lab scene — the same slot/context sensitivity the panels measured, now on camera.</p>
+<h3>Proposed redefinition: Gate M′ — the DYNAMIC meet</h3>
+<p>The system that works (M3e already demonstrated it) presents the rim <i>transiently</i> during the press, and finger B <b>catches it with the touch sensor</b> — presentation is an event, not an equilibrium. Reframe the material objective as: <b>maximize dwell time of the far rim in the 4–6 mm band during a slow press</b> (plus the existing smoothness constraints). Dwell time is a robust, slot-averageable scalar; the technique's touch trigger converts the dwell window into a grip. Stage T is unblocked under this framing — the material search and technique training co-optimize dwell × catch.</p>
+<p><i>(Alternative long-road: FEM deformable pad — a continuum has no discrete bistability; parked pending the above.)</i></p>
+<h2>Unattended work plan (after prereqs green)</h2>
+<ol><li><b>Lab smoke</b>: bundled Direct task (e.g. Cartpole) 100 iters headless → proves GPU PhysX + RL loop end-to-end. Record it/s.</li><li><b>Foundation asset</b>: SpringFoundation as a Lab-cloneable asset (tile grid + prismatic drives + coupling); washer + two-finger gripper as articulation. Numeric parity check against pick_lab (dish profile, ℓ).</li><li><b><code>M3f-material</code> Direct env</b>: canonical press, per-env material params, the 5 mm meet objective; grid+CEM over θm at ~512 envs. → <b>Gate M</b>.</li><li><b><code>M3f-pick</code> env</b>: the parallel-gripper maneuver with the smoothness reward; CEM warm start, then PPO residual (rsl_rl). → success/clean rates vs the pick_lab frontier.</li><li>Reports + eye diagrams ported (tilt-vs-closure from tensor traces — trivially batched now).</li></ol>
+<p>Risks/watch: 3.0.0-beta2 is a beta (pin exact tag; keep pick_lab as regression harness); deformable-FEM pad stays OUT of scope until the spring-tile Lab port reproduces pick_lab numbers.</p>
+<h2>Beta findings (2026-07-05, overnight port)</h2>
+<ol><li><b>The NGC isaac-lab:3.0.0-beta2 image's Kit is broken on this box</b> — every Kit-based script (including the bundled <code>create_empty.py</code> tutorial) dies ~15 s into extension loading: the deprecated <code>omni.isaac.ml_archive</code> prebundled torch fails (<code>undefined symbol: ncclDevCommCreate</code> under driver 595) and Isaac Sim's torch stub exits the app cleanly (exit 0 — nasty to diagnose). <code>--disable-ext</code> / experience overrides didn't bite.</li><li><b>The green "GPU smoke" was real but kitless</b> — Isaac Lab 3.0's Cartpole ran on the new Newton backend (that's why 50 iters took 11 s with no shader compile). RL infrastructure ✓; Kit PhysX in that image ✗.</li><li><b>Resolution: <code>docker/Dockerfile.lab</code></b> — Isaac Lab v3.0.0-beta2 cloned and pip-installed into our PROVEN <code>isaac-sim:6.0.0</code> image (the documented binary-install path; that Kit runs pick_lab daily). <code>push-grasp:lab</code>.</li><li>Port groundwork done meanwhile: <code>SpringFoundation(anchor=...)</code> makes the vertical springs clone-safe (env-local coords against a per-env anchor body instead of world-frame joints), and <code>lab/press_sweep.py</code> implements the Gate-M canonical press + parity + material-grid sweep.</li></ol>
+<h2>Gate M′ results (2026-07-05, dwell sweep + slot validation)</h2>
+<p>Implemented as <code>press_sweep.py --mode dwell</code> (256-env system grid, rim sampled at 20 Hz through press+hold; dwell = time in the 4–6 mm band) and <code>--mode gate2</code> (finalists × 8 scene slots, dwell per slot).</p>
+<p><img src="../2026-07-05/charts/dwell_slots.png" alt="dwell slots" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><b>The winner is a parker, not a transiter — and it's the heavy-damping variant:</b></p>
+<table border="0" cellspacing="0">
+<tr><th>candidate</th><th>dwell per slot (ms)</th><th>behaviour</th></tr>
+<tr><td>k300 r10 <b>d24</b> p3 ao.70</td><td><b>1000, 950, 0, 0, 0, 0, 1000, 0</b></td><td>3/8 slots ramp smoothly INTO the band and <b>park at ~5 mm for the entire hold</b>; the rest settle at −2.5 mm. Zero violence in either branch.</td></tr>
+<tr><td>k300 r10 d12 p3 ao.70</td><td>0 × 8</td><td>the 256-env sweep's "900 ms" cell — its slot was lucky. In this layout: never leaves −3 mm.</td></tr>
+<tr><td>k220 r10 d12 p4 ao.70</td><td>0–100</td><td>transits the band in ≤ 100 ms at ~20 mm overshoot — too fast for the 42 ms trigger debounce to guarantee a catch.</td></tr>
+<tr><td>k420 r6 d8/d16 p4 ao.50</td><td>~0</td><td>ejection branch: rim spikes off-scale (washer flung).</td></tr>
+</table>
+<p>Two sobering reproducibility notes, both now measured:</p>
+<ol><li><b>Slot chaos persists under the dwell metric</b> — the same config parks in 3/8 slots and stays down in 5/8. Dwell is smoother than the static gate (park vs stay-down, not pop-vs-eject), but the discrete tiles still bifurcate by grid phase.</li><li><b>The bifurcation is layout-global</b>: re-running the identical 5 configs with 16 extra envs appended (56 total vs 40) <i>changed the per-slot pattern</i> — the d12 config went from (min −3.2 / max +10.4) to (uniform −2.8). Nothing about an env changed except how many neighbours the stage holds. This is the discreteness disease in its clearest form yet.</li></ol>
+<p><b>Verdict</b>: the tile model's honest ceiling under Gate M′ is <b>k300/r10/d24/p3/ao.70 with ~3/8 slot catch-probability</b> (parked rims are trivially caught by the touch trigger; transits are not needed). That is enough to unblock Stage T — the technique trains against the parked branch, and the RL agent learns to <i>retry</i> on the stay-down branch (a press that doesn't present costs one gentle re-press, not a lost part). In parallel, the slot chaos is the strongest argument yet for the FEM re-evaluation (<a href="2026-07-05_fem-proposal.html">proposal</a>) — a continuum cannot depend on grid phase.</p>
+<h2>Stage T results (2026-07-05 evening)</h2>
+<p>Technique trained on the Gate-M′ parker material (k300/r10/<b>d24</b>, square tip, leveling, parallel-gripper mode): 24 rigs × 100 CEM rounds ≈ 2,400 evals at 60 Hz, search jitter on, smoothness-first reward, seeded from the M3e early-close winner. Two preludes, one negative and one decisive:</p>
+<ul><li><b>Beside-press primitive: rejected.</b> With A fully on the pad the dent never reaches the washer (Pasternak coupling is local by design — the FEM lever came from the wide-bowl behaviour we rejected); with overlap it's the violent transit again. Corollary: in the parker's parked slots the rim is <b>leaning on the descending B</b> — B is the wall that makes parking stable, so the full parallel press stays the primitive.</li><li><b>Gauntlet: two candidates at 24/24 jittered successes</b> (M3e's best was 12/24 on SOFT220) — the d24 parker + early-close family is simply a better-behaved system.</li></ul>
+<p><b>Full-env exit gate: PASSED — first <code>clean</code> replay of the project.</b></p>
+<table border="0" cellspacing="0">
+<tr><th>candidate</th><th>gauntlet</th><th>env replay</th></tr>
+<tr><td>cand3 (robust 2.71)</td><td>24/24</td><td>capture + roll-up, <b>slips at top of rise</b> (lifted 6.8 mm, ends flat on bed)</td></tr>
+<tr><td><b>cand0</b> (robust 2.65)</td><td>24/24</td><td><b>captured, vertical 89.5°, clearance 3.97 mm, success + clean</b></td></tr>
+</table>
+<p>θ(cand0) = [0.5566, 0.0267, 0.0042, 0.4606, 0.0016, 0.0269, 0.0023] (a_over 0.56, g0 26.7 mm, press 4.2 mm, close_pow 0.46, gap 1.6 mm, rise 26.9 mm, brace 2.3 mm).</p>
+<p>The lab↔env offset still reorders finalists (the higher-robust candidate was the one that slipped) — carrying multiple gauntlet survivors to the env gate is now standing procedure, and the same-θ trace-diff diagnostic remains the top infrastructure debt.</p>
+<h3>Stage T showcase (grid-skin renders, 90 mm bed)</h3>
+<p>Workshop-style grid skin (10 mm texture from rc-remote-platform), bed enlarged to 90 mm so the deformation halo is fully contained — the grid lines make the dish extent readable out to where the coupling cuts off. Replay is the exact cand0 θ; result reproduces clean (89.8°, 3.96 mm).</p>
+<p><img src="../2026-07-05/stageT1_hero_grid2/hero_1.png" alt="press dish" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"> <img src="../2026-07-05/stageT1_hero_grid2/hero_2.png" alt="vertical hold" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><a href="../2026-07-05/stageT1_hero_grid2/pick.mp4">full clip</a><video controls preload="metadata" src="../2026-07-05/stageT1_hero_grid2/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video></p>
+<p><b>Carry-height margin (found while making these):</b> raising the pull-up from the trained 27 mm to 35 or 45 mm drops the washer at the top of the rise — the pinch after roll-up is real but marginal. The trained maneuver is stable at its own rise; carry height is now a tracked robustness metric for the next training round (see next steps).</p>
+<h2>Stage T2 — carry phase + wrist pitch (2026-07-06)</h2>
+<p>Retrained with the carry extension (rise to a 45 mm hold) and two new θ dims from the 6-DOF unlock: <b>gap_carry</b> (post-capture squeeze) and <b>pitch_deg</b> (wrist pitch about the fingertips during carry).</p>
+<ul><li>In-lab best carried <b>53 mm</b> (reward 4.50). CEM drove pitch to the 18–20° bound in 3/4 finalists — tilting the pinch seats the washer — and restructured the maneuver (pull-up 27→8 mm; the carry does the lifting).</li><li>Jitter robustness dropped vs T1 (11–17/24; the task got harder), and the gauntlet ranking again anti-predicted transfer:</li></ul>
+<table border="0" cellspacing="0">
+<tr><th>candidate</th><th>gauntlet</th><th>env gate</th></tr>
+<tr><td>cand3 "winner" (robust 0.06)</td><td>16/24</td><td>slips, flat</td></tr>
+<tr><td>cand0 / cand1</td><td>15, 11/24</td><td>slip, flat</td></tr>
+<tr><td><b>cand2</b> (robust <b>−1.85</b>, lowest)</td><td>17/24</td><td><b>captured, carried 41.5 mm, carry_ok, clean, pitch 17.6°</b></td></tr>
+</table>
+<p>θ(cand2) = [0.5424, 0.0286, 0.0040, 0.9616, 0.0018, 0.0083, 0.0014, 0.0025, 17.59]. <b>Standing procedure reaffirmed</b>: every gauntlet finalist goes through the env gate; three rounds running, the env gate has picked a different winner than the gauntlet. (Trace-diff root cause: no static offset; the env B-spring responds ~0.25 s faster — <a href="../2026-07-05/charts/tracediff.png">chart</a>.)</p>
+<h3>Progress reel (env replays of round-best θ, grid skin)</h3>
+<p><a href="../2026-07-06/stageT2_carry/progress_reel.mp4">progress reel — rounds 0→99</a><video controls preload="metadata" src="../2026-07-06/stageT2_carry/progress_reel.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video></p>
+<p>Carry height in ENV replay creeps up over training: 26 mm (seed) → 29 mm (r25) → 34 mm (r99), with a lab-overfit dip at r50 that fails outright — the visible history of the process getting better that these reels are for.</p>
+<p><a href="../2026-07-06/t2gate_c2/pick.mp4">cand2 full carry</a><video controls preload="metadata" src="../2026-07-06/t2gate_c2/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video></p>
+</body></html>

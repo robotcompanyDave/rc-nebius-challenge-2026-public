@@ -1,0 +1,162 @@
+<svg viewBox="0 0 820 1500" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="red" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#e0483c"/></marker>
+    <marker id="blue" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#2f6fe0"/></marker>
+  </defs>
+  <style>
+    .card{fill:#ffffff;stroke:#e2e6ea;stroke-width:1.5}
+    .num{font-size:18px;font-weight:700;fill:#1f2733}
+    .cap{font-size:13px;fill:#5b6470}
+    .tag{font-size:12.5px;fill:#1f2733}
+    .tagm{font-size:12px;fill:#8a6d1f}
+    .surf{fill:none;stroke:#2fb3a3;stroke-width:4}
+    .surffill{fill:#d9f2ee;stroke:none}
+    .back{fill:#9aa2ad}
+    .wash{fill:#7f9cc4;stroke:#3f5f8f;stroke-width:1.5}
+    .grip{fill:#3a3f46}
+    .palm{fill:#2b2f35}
+    .hi{stroke:#d9691f;stroke-width:5;stroke-linecap:round}
+    .lo{stroke:#2f6fe0;stroke-width:4;stroke-linecap:round}
+    .force{stroke:#e0483c;stroke-width:3}
+    .mot{stroke:#2f6fe0;stroke-width:2.5;stroke-dasharray:6 4}
+    .ang{fill:none;stroke:#f08a24;stroke-width:2.5}
+    .dash{stroke:#c0561f;stroke-width:1.3;stroke-dasharray:4 3}
+  </style>
+
+  <rect width="820" height="1500" fill="#f7f8fa"/>
+  <text x="34" y="38" font-size="22" font-weight="700" fill="#1f2733">Washer roll-up pick — parallel Robotiq fingers</text>
+  <text x="34" y="60" class="cap">Fingers stay vertical &amp; parallel throughout — they only translate and close, never tilt. Grip = high-friction finger SIDES;</text>
+  <text x="34" y="77" class="cap">the downward-pointing TIP is low friction and just slides. No lip, no getting under the part.</text>
+
+  <!-- PANEL 1 -->
+  <g transform="translate(0,90)">
+    <rect x="20" y="6" width="780" height="262" rx="10" class="card"/>
+    <text x="40" y="34" class="num">1 · Approach — two parallel vertical fingers</text>
+    <rect x="40" y="190" width="740" height="10" class="surffill"/>
+    <line x1="40" y1="190" x2="780" y2="190" class="surf"/>
+    <rect x="40" y="200" width="740" height="12" class="back"/>
+    <text x="600" y="185" class="tagm">soft surface</text>
+    <text x="600" y="230" class="cap">hard backing (5&#8201;mm below)</text>
+    <!-- washer flat -->
+    <rect x="305" y="179" width="150" height="11" rx="2" class="wash"/>
+    <!-- gripper: palm + two vertical fingers -->
+    <rect x="374" y="34" width="14" height="16" class="palm"/>
+    <rect x="268" y="48" width="224" height="14" rx="4" class="palm"/>
+    <rect x="268" y="62" width="22" height="90" rx="4" class="grip"/>
+    <rect x="470" y="62" width="22" height="90" rx="4" class="grip"/>
+    <!-- friction callout on right finger -->
+    <line x1="470" y1="96" x2="470" y2="150" class="hi"/>
+    <line x1="470" y1="152" x2="492" y2="152" class="lo"/>
+    <text x="505" y="112" class="tag" fill="#d9691f">side face = HIGH friction (grips)</text>
+    <line x1="500" y1="116" x2="474" y2="124" stroke="#d9691f" stroke-width="1"/>
+    <text x="505" y="162" class="tag" fill="#2f6fe0">tip = LOW friction (slides)</text>
+    <line x1="500" y1="158" x2="484" y2="153" stroke="#2f6fe0" stroke-width="1"/>
+    <text x="40" y="252" class="cap">Robotiq 2F-85: parallel jaw, opens wider than the washer.</text>
+  </g>
+
+  <!-- PANEL 2 -->
+  <g transform="translate(0,370)">
+    <rect x="20" y="6" width="780" height="262" rx="10" class="card"/>
+    <text x="40" y="34" class="num">2 · Press one side → surface bends → gentle tilt</text>
+    <!-- bowl under left finger, flat far side -->
+    <path d="M40,190 L250,190 C290,190 300,205 335,205 C368,205 385,192 418,190 L780,190 L780,212 L40,212 Z" class="surffill"/>
+    <path d="M40,190 L250,190 C290,190 300,205 335,205 C368,205 385,192 418,190 L780,190" class="surf"/>
+    <rect x="40" y="200" width="740" height="12" class="back"/>
+    <!-- tilted washer ~15 deg, right edge up -->
+    <polygon points="319,189 464,150 466,160 321,199" class="wash"/>
+    <!-- gripper level, both tips same height -->
+    <rect x="374" y="30" width="14" height="14" class="palm"/>
+    <rect x="323" y="44" width="177" height="14" rx="4" class="palm"/>
+    <!-- left finger presses (tip low-mu) -->
+    <rect x="323" y="58" width="22" height="127" rx="4" class="grip"/>
+    <line x1="323" y1="185" x2="345" y2="185" class="lo"/>
+    <line x1="334" y1="120" x2="334" y2="150" class="force" marker-end="url(#red)"/>
+    <text x="352" y="120" fill="#e0483c" font-size="12.5" font-weight="600">press (low-µ tip)</text>
+    <!-- right finger beside the raised edge -->
+    <rect x="478" y="58" width="22" height="127" rx="4" class="grip"/>
+    <!-- motion: far edge lifts -->
+    <line x1="470" y1="150" x2="486" y2="133" class="mot" marker-end="url(#blue)"/>
+    <text x="478" y="130" class="cap">right edge tilts up</text>
+    <!-- angle -->
+    <path d="M446,190 A 40 40 0 0 0 438 168" class="ang"/>
+    <text x="446" y="182" fill="#f08a24" font-size="13" font-weight="700">10–20°</text>
+    <text x="40" y="252" class="cap">Lower the level gripper offset: left tip presses one side into the foam; the compliant surface tilts the far edge up.</text>
+  </g>
+
+  <!-- PANEL 3 -->
+  <g transform="translate(0,650)">
+    <rect x="20" y="6" width="780" height="262" rx="10" class="card"/>
+    <text x="40" y="34" class="num">3 · Right finger side grips the raised edge</text>
+    <path d="M40,190 L250,190 C290,190 300,205 335,205 C368,205 385,192 418,190 L780,190 L780,212 L40,212 Z" class="surffill"/>
+    <path d="M40,190 L250,190 C290,190 300,205 335,205 C368,205 385,192 418,190 L780,190" class="surf"/>
+    <rect x="40" y="200" width="740" height="12" class="back"/>
+    <polygon points="319,189 464,150 466,160 321,199" class="wash"/>
+    <rect x="374" y="30" width="14" height="14" class="palm"/>
+    <rect x="323" y="44" width="169" height="14" rx="4" class="palm"/>
+    <!-- left finger resting light on top (low-mu) -->
+    <rect x="323" y="58" width="22" height="127" rx="4" class="grip"/>
+    <line x1="323" y1="185" x2="345" y2="185" class="lo"/>
+    <text x="150" y="120" class="tag" fill="#2f6fe0">left tip stays light (low-µ)</text>
+    <line x1="250" y1="124" x2="330" y2="176" stroke="#2f6fe0" stroke-width="1"/>
+    <!-- right finger closed onto the edge, side contact (high-mu) -->
+    <rect x="468" y="58" width="22" height="112" rx="4" class="grip"/>
+    <line x1="468" y1="150" x2="468" y2="170" class="hi"/>
+    <text x="500" y="150" class="tag" fill="#d9691f">side (high-µ) pinches the rim —</text>
+    <text x="500" y="167" class="tag" fill="#d9691f">no need to get under it</text>
+    <text x="40" y="252" class="cap">The gripper closes a little: the right finger's SIDE face meets the raised rim and holds it by friction.</text>
+  </g>
+
+  <!-- PANEL 4 -->
+  <g transform="translate(0,930)">
+    <rect x="20" y="6" width="780" height="262" rx="10" class="card"/>
+    <text x="40" y="34" class="num">4 · Lift + close → the part rolls up, right side swings left</text>
+    <path d="M40,190 L780,190 L780,212 L40,212 Z" class="surffill"/>
+    <line x1="40" y1="190" x2="780" y2="190" class="surf"/>
+    <rect x="40" y="200" width="740" height="12" class="back"/>
+    <!-- part rotated ~50 deg, lifting -->
+    <polygon points="349,189 446,74 437,67 341,182" class="wash"/>
+    <!-- lifted gripper -->
+    <rect x="382" y="16" width="14" height="16" class="palm"/>
+    <rect x="366" y="30" width="106" height="14" rx="4" class="palm"/>
+    <!-- left finger, tip dragging on the top face (low-mu) -->
+    <rect x="366" y="44" width="22" height="82" rx="4" class="grip"/>
+    <line x1="366" y1="124" x2="388" y2="124" class="lo"/>
+    <line x1="384" y1="120" x2="366" y2="133" class="mot" marker-end="url(#blue)"/>
+    <text x="170" y="150" class="tag" fill="#2f6fe0">left tip slides along the top face</text>
+    <line x1="300" y1="146" x2="372" y2="128" stroke="#2f6fe0" stroke-width="1"/>
+    <!-- right finger, side still gripping upper end (high-mu) -->
+    <rect x="450" y="44" width="22" height="70" rx="4" class="grip"/>
+    <line x1="450" y1="66" x2="450" y2="100" class="hi"/>
+    <!-- arrows: EE lift + close -->
+    <line x1="389" y1="26" x2="389" y2="8" class="force" marker-end="url(#red)"/>
+    <text x="398" y="20" fill="#e0483c" font-size="12.5" font-weight="600">EE lifts</text>
+    <line x1="410" y1="90" x2="440" y2="86" class="mot" marker-end="url(#blue)"/>
+    <line x1="378" y1="100" x2="398" y2="98" class="mot" marker-end="url(#blue)"/>
+    <text x="470" y="205" class="cap">Gripping side rolls up &amp; toward the left; the part rotates toward vertical.</text>
+  </g>
+
+  <!-- PANEL 5 -->
+  <g transform="translate(0,1210)">
+    <rect x="20" y="6" width="780" height="262" rx="10" class="card"/>
+    <text x="40" y="34" class="num">5 · Picked vertical — held nearer the TOP</text>
+    <rect x="40" y="190" width="740" height="10" class="surffill"/>
+    <line x1="40" y1="190" x2="780" y2="190" class="surf"/>
+    <rect x="40" y="200" width="740" height="12" class="back"/>
+    <!-- vertical washer, lifted clear -->
+    <polygon points="387,183 387,40 398,40 398,183" class="wash"/>
+    <!-- gripper high, pinching the upper part -->
+    <rect x="385" y="14" width="14" height="16" class="palm"/>
+    <rect x="363" y="28" width="59" height="14" rx="4" class="palm"/>
+    <rect x="363" y="42" width="22" height="70" rx="4" class="grip"/>
+    <rect x="400" y="42" width="22" height="70" rx="4" class="grip"/>
+    <!-- high-mu side contacts on the upper part -->
+    <line x1="385" y1="52" x2="385" y2="105" class="hi"/>
+    <line x1="400" y1="52" x2="400" y2="105" class="hi"/>
+    <text x="440" y="70" class="tag" fill="#d9691f">held by the finger SIDES (high-µ),</text>
+    <text x="440" y="87" class="tag" fill="#d9691f">near the top of the washer</text>
+    <!-- bottom hangs free -->
+    <line x1="392" y1="183" x2="392" y2="189" class="mot"/>
+    <text x="405" y="175" class="cap">bottom hangs free, clear of the surface</text>
+    <text x="40" y="252" class="cap">No lip, no getting under — just a high-friction side grip plus a low-friction sliding tip. Fingers stayed parallel the whole time.</text>
+  </g>
+</svg>

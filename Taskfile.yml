@@ -1,0 +1,120 @@
+# grasp+sort sim — local runs, image build/push, and Nebius Job submission.
+# https://taskfile.dev
+version: '3'
+
+vars:
+  # Nebius container registry + project (from the platform deploy config).
+  REGISTRY: '{{.REGISTRY | default "<your-registry>"}}'
+  IMAGE: '{{.REGISTRY}}/rc-grasp-sort:latest'
+  PROJECT_ID: '{{.PROJECT_ID | default "<your-project-id>"}}'
+  BUCKET: '{{.BUCKET | default "rc-grasp-sort"}}'        # object-storage bucket for datasets/reports
+  # AI Jobs mount a bucket by its ID (not name) via --volume; resolve once with
+  #   nebius storage bucket get-by-name --name $BUCKET --format json | jq -r .metadata.id
+  BUCKET_ID: '{{.BUCKET_ID | default "<your-bucket-id>"}}'
+  PLATFORM: '{{.PLATFORM | default "gpu-l40s-d"}}'
+  PRESET: '{{.PRESET | default "1gpu-16vcpu-96gb"}}'
+  # Local Isaac python (override on the RTX 5080 box: D:/isaacsim/python.bat).
+  ISAAC_PYTHON: '{{.ISAAC_PYTHON | default "/isaac-sim/python.sh"}}'
+
+tasks:
+  default:
+    cmds: [task --list-all]
+
+  # ── local iteration (GPU box with Isaac Sim installed) ──────────
+  # v2 knobs (default in-code): GS_GRIPPER=parametric|robotiq (robotiq blocked in
+  # this harness — see graspsort/robot.py), GS_SOFT=1|0 (compliant 5 mm surface),
+  # parts = parametric nut/bolt/washer m6–m12, bundles + strategies sampled.
+  gen:local:
+    desc: "Run data-gen headless locally. Args: N_ATTEMPTS, BATCH, SEED, OUT, GRIPPER, SOFT."
+    env:
+      GS_N_ATTEMPTS: '{{.N_ATTEMPTS | default "50"}}'
+      GS_BATCH: '{{.BATCH | default "50"}}'
+      GS_SEED: '{{.SEED | default "0"}}'
+      GS_OUTPUT_DIR: '{{.OUT | default "./data/dataset"}}'
+      GS_GRIPPER: '{{.GRIPPER | default "parametric"}}'
+      GS_SOFT: '{{.SOFT | default "1"}}'
+    cmds:
+      - '"{{.ISAAC_PYTHON}}" jobs/gen_data.py'
+
+  eval:local:
+    desc: "Run sort eval headless locally. Args: TRIALS, PARTS, POLICY, MODEL, OUT, GRIPPER, SOFT."
+    env:
+      GS_TRIALS: '{{.TRIALS | default "10"}}'
+      GS_PARTS: '{{.PARTS | default "6"}}'
+      GS_POLICY: '{{.POLICY | default "heuristic"}}'
+      GS_MODEL: '{{.MODEL | default ""}}'
+      GS_OUTPUT_DIR: '{{.OUT | default "./data/eval"}}'
+      GS_GRIPPER: '{{.GRIPPER | default "parametric"}}'
+      GS_SOFT: '{{.SOFT | default "1"}}'
+    cmds:
+      - '"{{.ISAAC_PYTHON}}" jobs/eval_sort.py'
+
+  smoke:local:
+    desc: "Step-0 smoke: a few grasp attempts (soft surface + strategies), confirm lift >25mm."
+    env:
+      GS_N_ATTEMPTS: '{{.N | default "1"}}'
+      GS_BATCH: '{{.N | default "1"}}'
+      GS_OUTPUT_DIR: "./data/smoke"
+      GS_GRIPPER: '{{.GRIPPER | default "parametric"}}'
+      GS_SOFT: '{{.SOFT | default "1"}}'
+    cmds:
+      - '"{{.ISAAC_PYTHON}}" jobs/gen_data.py'
+
+  train:local:
+    desc: "Train the grasp-success scorer on the local dataset (pure numpy, no Isaac)."
+    env:
+      GS_DATASET: '{{.DATASET | default "./data/dataset"}}'
+      GS_MODEL_OUT: '{{.OUT | default "./data/model"}}'
+      GS_EPOCHS: '{{.EPOCHS | default "300"}}'
+    cmds:
+      - '"{{.PYTHON | default "python"}}" jobs/train_scorer.py'
+
+  # ── image build + push (needs Nebius login) ─────────
+  image:build-push:
+    desc: "Build the Job image and push to the Nebius registry."
+    cmds:
+      - nebius iam get-access-token | docker login {{.REGISTRY}} --username iam --password-stdin
+      - docker build -t {{.IMAGE}} .
+      - docker push {{.IMAGE}}
+
+  # ── Nebius Serverless AI Jobs ─────────────────────────────────────────────
+  job:gen:
+    desc: "Submit a data-gen Job. Args: N (attempts), BATCH, SEED, GRIPPER, SOFT, OUT_PREFIX."
+    cmds:
+      - >-
+        nebius ai job create --parent-id {{.PROJECT_ID}}
+        --image {{.IMAGE}} --platform {{.PLATFORM}} --preset {{.PRESET}} --timeout 6h
+        --env AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
+        --env AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
+        --env GS_OUTPUT_DIR=s3://{{.BUCKET}}/{{.OUT_PREFIX | default "dataset_v2"}}
+        --env GS_N_ATTEMPTS={{.N | default "5000"}}
+        --env GS_BATCH={{.BATCH | default "200"}}
+        --env GS_SEED={{.SEED | default "0"}}
+        --env GS_GRIPPER={{.GRIPPER | default "parametric"}}
+        --env GS_SOFT={{.SOFT | default "1"}}
+        --container-command /isaac-sim/python.sh
+        --args /workspace/grasp-sort/jobs/gen_data.py
+
+  job:eval:
+    desc: "Submit an eval Job. Args: TRIALS, PARTS, POLICY, MODEL, GRIPPER, SOFT."
+    cmds:
+      - >-
+        nebius ai job create --parent-id {{.PROJECT_ID}}
+        --image {{.IMAGE}} --platform {{.PLATFORM}} --preset {{.PRESET}} --timeout 3h
+        --env AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
+        --env AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
+        --env GS_OUTPUT_DIR=s3://{{.BUCKET}}/eval_v2
+        --env GS_TRIALS={{.TRIALS | default "20"}}
+        --env GS_PARTS={{.PARTS | default "6"}}
+        --env GS_POLICY={{.POLICY | default "heuristic"}}
+        --env GS_MODEL={{.MODEL | default ""}}
+        --env GS_GRIPPER={{.GRIPPER | default "parametric"}}
+        --env GS_SOFT={{.SOFT | default "1"}}
+        --container-command /isaac-sim/python.sh
+        --args /workspace/grasp-sort/jobs/eval_sort.py
+
+  job:list:
+    cmds: ['nebius ai job list --parent-id {{.PROJECT_ID}}']
+  job:logs:
+    desc: "Tail a job's logs. Arg: ID."
+    cmds: ['nebius ai job logs {{.ID}}']

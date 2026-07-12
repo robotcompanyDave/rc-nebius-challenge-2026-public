@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" font-family="Helvetica,Arial,sans-serif">
+  <rect width="900" height="470" fill="#fbfaf7"/>
+  <text x="450" y="30" text-anchor="middle" font-size="19" font-weight="bold" fill="#222">Proximity leveling — tiles conform AHEAD of contact (the square-tip fix)</text>
+  <text x="450" y="50" text-anchor="middle" font-size="12" fill="#666">per control step: bias each tile's spring TARGET (not its position) toward the contact envelope of nearby bodies, weight exp(−d²/2ℓ²)</text>
+
+  <!-- LEFT: today, jam -->
+  <g transform="translate(40,85)">
+    <text x="190" y="0" text-anchor="middle" font-size="14" font-weight="bold" fill="#b03a2e">TODAY — square tip JAMS</text>
+    <line x1="0" y1="80" x2="380" y2="80" stroke="#bbb" stroke-dasharray="4 3"/>
+    <!-- tiles level, one wall in front of tip -->
+    <g stroke="#8a6d3b" stroke-width="0.6">
+      <rect x="10"  y="80" width="34" height="70" fill="#e8dcc0"/>
+      <rect x="46"  y="80" width="34" height="70" fill="#e8dcc0"/>
+      <rect x="82"  y="80" width="34" height="70" fill="#e8dcc0"/>
+      <rect x="118" y="80" width="34" height="70" fill="#e8dcc0"/>
+      <!-- plowed tiles under tip -->
+      <rect x="154" y="118" width="34" height="32" fill="#dcc39a"/>
+      <rect x="190" y="118" width="34" height="32" fill="#dcc39a"/>
+      <!-- wall tile -->
+      <rect x="226" y="80" width="34" height="70" fill="#e8b6a8"/>
+      <rect x="262" y="80" width="34" height="70" fill="#e8dcc0"/>
+      <rect x="298" y="80" width="34" height="70" fill="#e8dcc0"/>
+      <rect x="334" y="80" width="34" height="70" fill="#e8dcc0"/>
+    </g>
+    <!-- square finger dragged right, bottom below tile tops -->
+    <rect x="158" y="42" width="62" height="76" fill="#39424e" rx="2"/>
+    <path d="M232,58 L268,58" stroke="#39424e" stroke-width="2" marker-end="url(#ad)"/>
+    <text x="250" y="50" text-anchor="middle" font-size="10" fill="#39424e">drag</text>
+    <!-- collision X -->
+    <g stroke="#b03a2e" stroke-width="3">
+      <line x1="221" y1="92" x2="237" y2="108"/>
+      <line x1="237" y1="92" x2="221" y2="108"/>
+    </g>
+    <text x="229" y="128" text-anchor="middle" font-size="10" fill="#b03a2e">side face:</text>
+    <text x="229" y="140" text-anchor="middle" font-size="10" fill="#b03a2e">can't yield sideways</text>
+    <g font-size="11" fill="#333">
+      <text x="0" y="205">tile joints are VERTICAL-only → the leading face is a rigid</text>
+      <text x="0" y="222">wall. Only a round tip sneaks through (pushes tile EDGES</text>
+      <text x="0" y="239">down at an angle) — an artifact, not material behaviour.</text>
+    </g>
+  </g>
+
+  <!-- RIGHT: leveled -->
+  <g transform="translate(480,85)">
+    <text x="190" y="0" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e7a45">WITH LEVELING — square tip slides</text>
+    <line x1="0" y1="80" x2="380" y2="80" stroke="#bbb" stroke-dasharray="4 3"/>
+    <g stroke="#8a6d3b" stroke-width="0.6">
+      <rect x="10"  y="80"  width="34" height="70" fill="#e8dcc0"/>
+      <rect x="46"  y="80"  width="34" height="70" fill="#e8dcc0"/>
+      <rect x="82"  y="82"  width="34" height="68" fill="#e8dcc0"/>
+      <rect x="118" y="94"  width="34" height="56" fill="#e2d0ac"/>
+      <rect x="154" y="118" width="34" height="32" fill="#dcc39a"/>
+      <rect x="190" y="118" width="34" height="32" fill="#dcc39a"/>
+      <!-- ramped tiles ahead of tip: targets pulled down -->
+      <rect x="226" y="124" width="34" height="26" fill="#cfe6d4"/>
+      <rect x="262" y="102" width="34" height="48" fill="#dcedde"/>
+      <rect x="298" y="88"  width="34" height="62" fill="#e8f2e8"/>
+      <rect x="334" y="82"  width="34" height="68" fill="#e8dcc0"/>
+    </g>
+    <!-- target arrows on ramp tiles -->
+    <g stroke="#1e7a45" stroke-width="1.6">
+      <path d="M243,108 L243,120" marker-end="url(#ag2)"/>
+      <path d="M279,88 L279,98"  marker-end="url(#ag2)"/>
+      <path d="M315,80 L315,85"  marker-end="url(#ag2)"/>
+    </g>
+    <text x="300" y="70" text-anchor="middle" font-size="10" fill="#1e7a45">targets lowered by proximity, weight exp(−d²/2ℓ²)</text>
+    <rect x="158" y="42" width="62" height="76" fill="#39424e" rx="2"/>
+    <path d="M232,58 L268,58" stroke="#39424e" stroke-width="2" marker-end="url(#ad)"/>
+    <!-- smooth ride arrow -->
+    <path d="M225,132 C260,128 290,112 330,90" stroke="#1e7a45" stroke-width="2" fill="none" stroke-dasharray="5 3"/>
+    <g font-size="11" fill="#333">
+      <text x="0" y="205">tiles AHEAD of the finger ramp down to meet it — the way a</text>
+      <text x="0" y="222">continuous surface has no step. Springs stay springs (only the</text>
+      <text x="0" y="239">drive TARGET moves), so contact forces remain real physics.</text>
+    </g>
+  </g>
+
+  <!-- bottom: also fixes the roll -->
+  <g transform="translate(40,375)" font-size="11.5" fill="#444">
+    <rect x="-10" y="-16" width="830" height="64" fill="#f0ece2" rx="6"/>
+    <text x="0" y="2">same mechanism around the PART: the pocket the washer sits in gains conforming ramps → finger B pushes the rim UP a slope</text>
+    <text x="0" y="21">(progressive roll with bounded d(tilt)/dt) instead of popping it over a wall (snap-to-vertical).</text>
+    <text x="0" y="40">cost: one vectorized pass over ~150–250 tiles at 60 Hz — negligible; no kinematic snapping anywhere.</text>
+  </g>
+
+  <defs>
+    <marker id="ad" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#39424e"/>
+    </marker>
+    <marker id="ag2" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#1e7a45"/>
+    </marker>
+  </defs>
+</svg>

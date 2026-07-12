@@ -1,0 +1,68 @@
+<svg viewBox="0 0 840 380" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="d" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M1,1 L7,4 L1,7" fill="none" stroke="#5b6470" stroke-width="1.4"/></marker>
+    <marker id="d2" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M7,1 L1,4 L7,7" fill="none" stroke="#5b6470" stroke-width="1.4"/></marker>
+  </defs>
+  <style>
+    .cap{font-size:13px;fill:#5b6470}
+    .lbl{font-size:12.5px;fill:#1f2733}
+    .surf{fill:none;stroke:#2fb3a3;stroke-width:3.5}
+    .surffill{fill:#d9f2ee;stroke:none}
+    .ref{fill:none;stroke:#9aa2ad;stroke-width:1.2;stroke-dasharray:5 4}
+    .wash{fill:#7f9cc4;stroke:#3f5f8f;stroke-width:1.5}
+    .grip{fill:#3a3f46}
+    .lo{stroke:#2f6fe0;stroke-width:4;stroke-linecap:round}
+    .spring{fill:none;stroke:#57b8ab;stroke-width:1.6}
+    .dim{stroke:#5b6470;stroke-width:1}
+    .ang{fill:none;stroke:#f08a24;stroke-width:2.5}
+  </style>
+
+  <rect width="840" height="380" fill="#f7f8fa"/>
+  <text x="28" y="34" font-size="19" font-weight="700" fill="#1f2733">Frame 2, measured in Isaac Sim — to scale (1 mm = 6 px)</text>
+  <text x="28" y="55" class="cap">Spring-foundation surface (k=300 N/m, 4 mm tiles). Finger held at 2.6 mm press → washer settles at a stable 15°.</text>
+
+  <!-- deformed surface fill + line -->
+  <path d="M120,150 L300,150 C340,150 350,193 380,193 C420,193 450,152 480,150 L720,150 L720,250 L120,250 Z" class="surffill"/>
+  <!-- undeformed reference -->
+  <line x1="120" y1="150" x2="720" y2="150" class="ref"/>
+  <text x="726" y="154" class="cap">rest surface</text>
+  <!-- springs under the bed (compressed under the dip) -->
+  <g class="spring">
+    <path d="M150,250 L150,152 M180,250 L180,152"/>
+    <path d="M300,250 l0,-70 5,-4 -10,-5 10,-5 -5,-4 0,-8"/>
+    <path d="M355,250 l0,-38 5,-4 -10,-5 10,-5 -5,-4 0,-12"/>
+    <path d="M410,250 l0,-52 5,-4 -10,-5 10,-5 -5,-4 0,-8"/>
+    <path d="M470,250 L470,150 M560,250 L560,150 M650,250 L650,150"/>
+  </g>
+  <line x1="120" y1="250" x2="720" y2="250" stroke="#9aa2ad" stroke-width="6"/>
+  <text x="726" y="252" class="cap">rigid backing</text>
+  <!-- deformed surface line on top -->
+  <path d="M120,150 L300,150 C340,150 350,193 380,193 C420,193 450,152 480,150 L720,150" class="surf"/>
+
+  <!-- washer, tilted 15deg (near rim -6.4mm, far rim -0.2mm) -->
+  <polygon points="346,182 490,144 494,158 350,196" class="wash"/>
+
+  <!-- pressing finger (low-mu tip) on the near side -->
+  <rect x="357" y="88" width="52" height="86" rx="5" class="grip"/>
+  <line x1="359" y1="172" x2="407" y2="172" class="lo"/>
+  <text x="414" y="120" class="lbl" fill="#2f6fe0">low-µ tip, constant press 2.6 mm</text>
+  <line x1="412" y1="124" x2="392" y2="150" stroke="#2f6fe0" stroke-width="1"/>
+
+  <!-- tilt angle at the far rim -->
+  <path d="M470,151 A 40 40 0 0 0 460 128" class="ang"/>
+  <text x="474" y="140" fill="#f08a24" font-size="14" font-weight="700">15°</text>
+
+  <!-- near-sink dimension -->
+  <line x1="330" y1="150" x2="330" y2="189" class="dim" marker-start="url(#d)" marker-end="url(#d2)"/>
+  <text x="196" y="176" class="lbl">near rim sinks −6.4 mm</text>
+  <line x1="284" y1="172" x2="326" y2="172" stroke="#5b6470" stroke-width="1"/>
+
+  <!-- far edge label -->
+  <circle cx="492" cy="151" r="3" fill="#3f5f8f"/>
+  <text x="500" y="176" class="lbl">far rim ≈ 0 (at surface, tilted clear of the near side)</text>
+
+  <!-- surface deflection label -->
+  <text x="300" y="230" class="lbl">surface bends 7.2 mm under the press (springs yield in proportion)</text>
+
+  <text x="28" y="366" class="cap">Below ~2.8 mm press it holds this angle rock-steady (lateral slip ~1.4 mm); press deeper and it tips up toward vertical — the roll-up.</text>
+</svg>

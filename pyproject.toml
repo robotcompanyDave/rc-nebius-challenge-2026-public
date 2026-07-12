@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graspsort"
+version = "0.1.0"
+description = "Headless Isaac Sim grasp+sort data-gen and eval for a supervised grasp-success scorer, runnable as a Nebius Serverless AI Job."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "David Cox" }]
+dependencies = [
+    "numpy>=1.24",
+    "pyarrow>=14",
+    "opencv-python-headless>=4.9",
+    "imageio-ffmpeg>=0.5",
+]
+
+[project.optional-dependencies]
+# Isaac Sim's bundled python already ships numpy/usd; these extras are only for
+# authoring/validating pure-USD code (parts.py, gripper.py) off-GPU on a box
+# without Isaac installed.
+offline = ["usd-core>=24.3"]
+
+[tool.setuptools]
+packages = ["graspsort"]

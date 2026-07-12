@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+data/*
+!data/reports/
+*.blend1
+.DS_Store

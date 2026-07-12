@@ -1,0 +1,23 @@
+# push-grasp LOCAL dev image — reuse the Isaac Sim runtime, layer our extra deps,
+# and MOUNT the code at run time (no COPY) so edits are live without rebuilding.
+#
+# Same base the rc-remote-platform gateway runs (nvcr.io/nvidia/isaac-sim:6.0.0,
+# already pulled locally). The base python already has numpy/matplotlib/boto3/
+# imageio/pillow; we add only what it lacks (opencv, pyarrow, imageio-ffmpeg).
+#
+# Build (GPU-free — just pip layers on the local base):
+#   docker build -f docker/Dockerfile.dev -t push-grasp:dev .
+# Run: use docker/run.sh (headless Isaac; RTX works via runtime=nvidia).
+FROM nvcr.io/nvidia/isaac-sim:6.0.0
+
+ENV ACCEPT_EULA=Y \
+    OMNI_KIT_ACCEPT_EULA=Y \
+    PRIVACY_CONSENT=Y \
+    PYTHONUNBUFFERED=1
+
+COPY requirements.txt /tmp/requirements.txt
+RUN /isaac-sim/python.sh -m pip install --no-cache-dir -r /tmp/requirements.txt
+
+# code is mounted at /workspace/push-grasp by docker/run.sh — nothing baked here
+WORKDIR /workspace/push-grasp
+ENTRYPOINT ["/isaac-sim/python.sh"]

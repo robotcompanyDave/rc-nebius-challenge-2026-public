@@ -1,0 +1,54 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Soft-surface materials report — 2026-07-04</title>
+<style>
+body{font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:880px;
+margin:24px auto;padding:0 16px;color:#222;line-height:1.55;background:#fbfaf7}
+h1,h2,h3{color:#1a1a1a} h2{border-bottom:2px solid #e0d9c8;padding-bottom:4px}
+table{border-collapse:collapse;margin:12px 0;font-size:14px}
+th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}
+th{background:#f0ece2} pre{background:#f4f1ea;padding:12px;border-radius:6px;
+overflow-x:auto;font-size:13px} code{background:#f0ece2;padding:1px 5px;
+border-radius:3px;font-size:0.92em} hr{border:none;border-top:2px solid #e0d9c8;
+margin:28px 0}
+</style></head><body>
+<h1>Training technique — how the pick is learned, and how Isaac Lab would scale it</h1>
+<p><i>Written before the smooth-ramp scale-up (2026-07-04 evening). Companion to <a href="2026-07-04_robust-pick.md">2026-07-04_robust-pick.md</a>.</i></p>
+<h2>1. What we train</h2>
+<p>Not a neural policy (yet). The maneuver is a <b>parameterized motion primitive</b> with one event branch:</p>
+<pre>descend(bound gripper, A over rim by a_over, gap g0)      # open-loop
+  → press to press_depth                                  # open-loop
+  → WAIT until B&#x27;s spring deflects (touch sensor)         # event-driven
+  → brace (A presses `brace` deeper, B holds)             # open-loop
+  → pull up rise_h while closing to gap_final,            # open-loop
+    close progress = rise_progress ** close_pow</pre>
+<p>θ ∈ R⁷ = (a_over, g0, press_depth, close_pow, gap_final, rise_h, brace). The only feedback in the loop is the touch trigger — everything after it is choreography. This is deliberate: 7 interpretable numbers, ~100s of evaluations to learn, zero NN infrastructure, and every parameter maps to a robot instruction we can hand to the UR10e controller.</p>
+<h2>2. How it's evaluated and optimized</h2>
+<ul><li><b>Multi-rig batching</b>: K independent rigs (foundation + washer + gripper) spaced 0.3 m apart in ONE physics scene, stepped together. One <code>world.step</code> advances K evaluations — population parallelism without vectorized envs.</li><li><b>CEM (cross-entropy method)</b>: population = K rigs/round; elites (top ~34%) refit a diagonal Gaussian; σ floored at 8% of the bounds to keep exploring.</li><li><b>Jitter during search</b>: every eval gets placement ±0.7 mm / height ±0.3 mm noise, so the optimizer can't camp on knife-edge solutions.</li><li><b>Gauntlet selection</b>: top candidates face a fixed 8-jitter panel (one jitter per rig, same θ on all rigs); winner by <b>worst-2-mean</b>. Measured caveat: one panel is one SAMPLE (same θ + same panel re-run flipped the winner) → panels must be repeated 2–3× and averaged.</li><li><b>Determinism note</b>: PhysX in one scene is deterministic given identical boots, but scene composition and boot state shift outcomes — the same brittleness that shows up as the lab→env transfer gap. Treat every score as stochastic; select on distributions, not points.</li></ul>
+<h2>3. Reward (smooth-ramp era, this phase)</h2>
+<p>Ordering dictated by cell reality: <b>a violent maneuver is worse than a failed one</b> — high forces can kick the washer out of the work area, ending the episode chain; a gentle failure leaves the part in place for a retry.</p>
+<pre>smooth   = 0.3·max_tilt/90 + 0.7·lift_tilt/90               (≤ 1)
+capture  = captured &amp;&amp; clearance&gt;0 : 1 + 1.5·clip(clearance/8mm)
+violence = 3.0·clip((max_dtilt − 20°)/30°, 0, 1)            (20°/sample grace)
+escape   = washer flung/left the area : reward := −1 flat
+reward   = smooth + capture − violence          (unless escape)</pre>
+<p>Consequences: gentle success ≈ 3.5 · gentle failure ≈ 0.7–1.0 · <b>violent success ≈ 0.5 (below a gentle failure)</b> · violent failure ≈ −0.5 · escape −1. Success alone is no longer what CEM climbs — <i>repeatable gentleness</i> is. Metrics reported per eval: <code>success</code>, <code>clean</code> (success ∧ no snap), <code>escape</code>, <code>max_dtilt</code> (20 Hz, pre-grip window).</p>
+<h2>4. Where the compute goes today (and the plan)</h2>
+<p>Profile of the current lab (8 rigs, 12×12 tiles + ~264 coupling drives each, physics_dt 1/240, control in Python every step):</p>
+<ul><li><b>GPU ~idle</b> (0–3% util; ~600 MB): PhysX runs on CPU, rendering is off.</li><li>Wall time ≈ 50 s per 8-eval round → <b>~9–10 evals/min</b>.</li><li>Bottlenecks, in order: Python per-step control loop (240 Hz × K rigs of USD attribute writes), CPU solver on ~1.2k bodies / ~2.5k drives, per-tick XformCache queries.</li></ul>
+<p>Throughput bench (measured 2026-07-04 evening, 2 rounds each):</p>
+<table border="0" cellspacing="0">
+<tr><th>config</th><th>s/round</th><th><b>evals/hr</b></th><th>GPU util</th><th>verdict</th></tr>
+<tr><td>8-rig CPU (baseline)</td><td>42</td><td>686</td><td>0 %</td><td>—</td></tr>
+<tr><td>8-rig <b>GPU dynamics</b></td><td>35.5</td><td>811</td><td>4–16 %</td><td>+18 %, but the GPU solver produces <b>different dynamics</b> (snap counts and rewards shift) — a fresh transfer gap; rejected for training consistency</td></tr>
+<tr><td>24-rig CPU, 120 Hz control</td><td>118</td><td>732</td><td>0 %</td><td>Python loop scales linearly with rigs — no win</td></tr>
+<tr><td>24-rig GPU, 120 Hz</td><td>110</td><td>789</td><td>2–11 %</td><td>GPU doesn't rescue the Python loop either</td></tr>
+<tr><td><b>24-rig CPU, 60 Hz control, 10×10 bed</b></td><td>~65</td><td><b>~1300</b></td><td>0 %</td><td><b>adopted</b> — decimation + 30 % fewer bodies/joints, same physics context</td></tr>
+</table>
+<p>Conclusion: the per-step Python USD-write loop is the wall (§5.2 — Isaac Lab's tensor I/O removes it by construction). Within pick_lab, control-rate decimation and a leaner bed bought ~2×; selection budget goes to <b>3× repeated gauntlet panels</b>, which the eye-diagram rerun proved necessary.</p>
+<h2>5. Isaac Lab — recommendations for the next scale jump</h2>
+<p>The current rig maxes out around a few thousand evals/hour on one machine. <a href="https://isaac-sim.github.io/IsaacLab/">Isaac Lab</a> (NVIDIA's RL framework on Isaac Sim) is built for exactly the jump past that:</p>
+<ol><li><b>Vectorized GPU envs instead of hand-rolled multi-rig.</b> Isaac Lab clones one env design N× (hundreds–thousands) with <code>replicate_physics</code>, steps them in one GPU PhysX call, and exposes batched tensors. Our multi-rig trick is a manual version of this; Lab does it at 100× the width. The foundation (tile grid + joints) is a normal articulated asset — cloneable.</li><li><b>Move state I/O off USD.</b> The single biggest porting win: Lab reads/writes body states through GPU tensors (<code>RigidObject.data</code>), not per-prim USD attributes. Our Python-per-step USD writes (the current #1 bottleneck) disappear by construction. (Interim tip even without Lab: use Isaac's tensorized <code>RigidPrim</code> views for the tiles/washer instead of XformCache.)</li><li><b>Graduate the primitive to a closed-loop policy.</b> Keep θ-CEM as the curriculum starter, then train a small PPO policy (rsl_rl/skrl, built into Lab) whose observations are exactly what the robot will have: B-spring deflection (the touch sense), gripper pose, commanded phase — and whose actions perturb the primitive (Δz, Δgap, Δclose-rate per control tick). "Primitive + learned residual" keeps interpretability and adds the feedback that would fix pop-vs-roll on the fly. The smoothness reward transfers verbatim.</li><li><b>Domain randomization as a manager, not hand-rolled jitter.</b> Lab's event manager randomizes material params (k, couple → our E′, t), friction, mass, placement per env per reset — our jitter panel becomes a config block, and the robust-selection problem largely dissolves into training-time DR.</li><li><b>Consider the FEM deformable pad.</b> PhysX 5 supports GPU soft-body (FEM) volumes; Isaac Lab exposes deformable-body assets. A real deformable pad would replace 144 tiles + 264 coupling drives per env with one mesh — more realistic contact (true lateral compliance → square-tip drag "just works"), GPU-resident, and no α=4 solver-correction hack. Risks: contact tuning is its own art, deformables are GPU-pipeline-only, and env cloning with deformables is newer/less battle-tested — prototype with 1 env first.</li><li><b>Practicalities</b>: Lab wants its own kit app + extension layout; our docker method carries over (same Isaac Sim base image). Keep pick_lab as the fast iteration harness and CI-style regression (it boots in ~90 s); use Lab for the wide training runs. Migration effort estimate: the foundation asset + Direct-workflow env ≈ 1–2 days; PPO residual training loop ≈ 1 day on top.</li></ol>
+<h2>6. This phase's run plan</h2>
+<ul><li>Reward: §3. Bounds nudged toward the ramp regime (a_over capped below the flingy 0.65 bound-pin; press capped at 4.5 mm).</li><li>Config from the throughput bench (§4), target ≥ 2× today's evals/hour.</li><li>Budget: ~500–800 search evals on SOFT220 (+ MED as control if time allows), then 3× repeated 8-jitter panels on the top ~6 distinct candidates.</li><li>Deliverables: eye diagrams of the winners (tight-ramp target), robust table with repeated-panel means ± spread, full-env replay of the winner, results appended to the robust-pick report.</li></ul>
+</body></html>

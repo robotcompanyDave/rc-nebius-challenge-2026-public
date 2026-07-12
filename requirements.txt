@@ -1,0 +1,6 @@
+# Extra deps layered on top of the isaac-sim base image's bundled python.
+# isaacsim / omni.* / pxr / numpy ship inside the base image — do NOT list them.
+pyarrow>=14
+opencv-python-headless>=4.9
+imageio-ffmpeg>=0.5    # bundled ffmpeg: re-encode mp4v -> H.264 (cv2 wheel has no encoder)
+boto3>=1.34            # direct S3 upload of outputs (Nebius mountpoint-s3 mounts read-only)

@@ -1,0 +1,116 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Soft-surface materials report — 2026-07-04</title>
+<style>
+body{font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:880px;
+margin:24px auto;padding:0 16px;color:#222;line-height:1.55;background:#fbfaf7}
+h1,h2,h3{color:#1a1a1a} h2{border-bottom:2px solid #e0d9c8;padding-bottom:4px}
+table{border-collapse:collapse;margin:12px 0;font-size:14px}
+th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}
+th{background:#f0ece2} pre{background:#f4f1ea;padding:12px;border-radius:6px;
+overflow-x:auto;font-size:13px} code{background:#f0ece2;padding:1px 5px;
+border-radius:3px;font-size:0.92em} hr{border:none;border-top:2px solid #e0d9c8;
+margin:28px 0}
+</style></head><body>
+<h1>Soft-surface materials report — 2026-07-04</h1>
+<p><i>Compliant work-surface for the washer press→drag→roll-up pick. What the model is, what we measured across four material variants, why the current material behaves like a <b>gel</b> rather than a <b>foam/neoprene pad</b>, and the calculations for the neoprene-like next iteration.</i></p>
+<p>All image/video links are relative to this file (open via the file browser at <code>this data/reports/ folder</code>).</p>
+<hr>
+<h2>1. The model — underlying logic</h2>
+<p>The surface is a grid of small rigid <b>tile columns</b> (<code>graspsort/soft_foundation.py</code>). Each tile has three ingredients, all integrated by PhysX (no per-step scripting):</p>
+<table border="0" cellspacing="0">
+<tr><th>ingredient</th><th>implementation</th><th>physical meaning</th></tr>
+<tr><td><b>vertical spring</b></td><td>prismatic joint to world, linear drive: stiffness <code>k_cell</code>, damping <code>c</code></td><td>a column of the pad compressing: <code>k_cell ≈ E′·cell²/t</code> (E′ = effective compression modulus, t = pad thickness)</td></tr>
+<tr><td><b>shear coupling</b></td><td>D6 joint per neighbour pair, Z-drive pulling heights equal: stiffness <code>k_link</code></td><td>the Pasternak shear layer: <code>k_link ≈ G·t</code> (G = shear modulus). Note <code>G·t</code> is <b>independent of cell size</b></td></tr>
+<tr><td><b>drop-off</b> (optional)</td><td>extra links to neighbours-of-neighbours at <code>k_link·falloff^(r−1)</code>, truncated below <code>cutoff</code></td><td>non-local smoothing (ad-hoc; see §4 — the proper operator is the ring-1 Laplacian at the <i>right strength</i>)</td></tr>
+</table>
+<p>This is a discrete <b>Winkler–Pasternak foundation</b>. Its single most important emergent property is the <b>characteristic decay length</b> of a dent:</p>
+<pre>ℓ = cell · √(k_link / k_cell)</pre>
+<p>Outside a loaded region the deflection falls off as <code>w(x) ∝ exp(−x/ℓ)</code>. <b>ℓ is what your eye reads as "foam vs gel".</b> A real elastic pad spreads its dent over roughly its own thickness (ℓ ≈ t); a gel/putty localises (ℓ → 0).</p>
+<p>The smooth <b>skin</b> (<code>SurfaceSkin</code>) is purely cosmetic: a non-colliding Catmull-Clark mesh re-draped over the tile tops each rendered frame.</p>
+<h2>2. What we measured</h2>
+<h3>2.1 Coupling exists and works (2026-07-03)</h3>
+<p>One-sided 3 mm press on an M12 washer, centre-row deflection (mm), 4 mm cells:</p>
+<pre>couple = 0    (pure Winkler):  .2 .2 .2 .2 | 3.0 3.0 3.0 3.0 | .2 .2 .2   → hard dimple, washer FLIPS to 89°
+couple = 150  (Pasternak):     .2 .3 .7 4.2 6.0 5.0 4.4 4.1 3.8 3.3 .9 .3 → dish, washer settles ~8°</pre>
+<p><img src="../2026-07-03/couple_150/tilted_zoom.png" alt="coupled dish" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"> <i>(left-to-right: the couple=150 dish under finger+washer — but note the edge of the dish still drops from 3.3 mm to 0.9 mm in ONE cell: a wall, not a slope)</i></p>
+<h3>2.2 The FIRST pick ladder (M3c, morning — capsule tip, no leveling; superseded by §6)</h3>
+<p><i>Historical baseline:</i> the two-finger press→drag→roll-up pick learned by CEM per material (<code>tools/pick_lab.py</code>, 8 rigs × 8 rounds, 64 evals each; replays in <code>tools/render_pick.py</code>). These runs used the <b>capsule-tip workaround and no proximity leveling</b> — the latest results (square tip + leveling + calibrated neoprene) are in <b>§6</b>. Full data: <code>../2026-07-04/lab_mats2/</code>.</p>
+<table border="0" cellspacing="0">
+<tr><th>material</th><th>k_cell</th><th>k_link</th><th>falloff</th><th><b>ℓ (mm)</b></th><th>success</th><th>best lift</th><th>assets</th></tr>
+<tr><td>M0 as-is</td><td>300</td><td>150</td><td>0</td><td><b>3.5</b></td><td>59 %</td><td>64.9 mm</td><td><a href="../2026-07-04/render_M0_asis/p2_engaged_zoom.png">engaged</a> · <a href="../2026-07-04/render_M0_asis/p3_lifted_zoom.png">lifted</a> · <a href="../2026-07-04/render_M0_asis/pick.mp4">video</a><video controls preload="metadata" src="../2026-07-04/render_M0_asis/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video></td></tr>
+<tr><td>M1 drop-off</td><td>300</td><td>150</td><td>0.5</td><td>~4.5</td><td>56 %</td><td>59.0 mm</td><td><a href="../2026-07-04/render_M1_dropoff/p3_lifted_zoom.png">lifted</a> · <a href="../2026-07-04/render_M1_dropoff/pick.mp4">video</a><video controls preload="metadata" src="../2026-07-04/render_M1_dropoff/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video></td></tr>
+<tr><td>M2 firm+local</td><td>600</td><td>80</td><td>0.4</td><td><b>1.8</b></td><td>42 %</td><td>54.4 mm</td><td><a href="../2026-07-04/render_M2_firm_local/pick.mp4">video</a><video controls preload="metadata" src="../2026-07-04/render_M2_firm_local/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video> <i>(replay brittle in full env — open task)</i></td></tr>
+<tr><td>M3 soft+local</td><td>200</td><td>40</td><td>0.3</td><td><b>2.2</b></td><td><b>86 %</b></td><td>34.9 mm</td><td><a href="../2026-07-04/render_M3_soft_local/p3_lifted_zoom.png">lifted</a> · <a href="../2026-07-04/render_M3_soft_local/pick.mp4">video</a><video controls preload="metadata" src="../2026-07-04/render_M3_soft_local/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video> · <a href="../2026-07-04/render_M3_skin/pick.mp4">skin video</a><video controls preload="metadata" src="../2026-07-04/render_M3_skin/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video></td></tr>
+</table>
+<p><img src="../2026-07-04/lab_mats2/learning_curves.png" alt="learning curves" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p>Maneuver findings baked into the lab along the way: the pinch gap must close <i>below</i> washer thickness (the compliant finger-B spring turns overlap into a bounded grip force), and the close must happen <b>at depth before the lift</b> (else the rolled-up washer is left standing in the foam at +11.7 mm = OD/2 − sink).</p>
+<h2>3. Diagnosis — it's a gel, not a foam</h2>
+<p>Every observation from review traces to <b>ℓ being ~2–4 mm when a neoprene-like pad of this thickness should have ℓ ≈ 8–12 mm</b> (k_link 10–20× too weak):</p>
+<ol><li><b>"Steep cliff under the press, minor influence around it."</b> Correct: at ℓ = 2–3.5 mm the first unloaded neighbour sits at <code>exp(−cell/ℓ)</code> ≈ 10–25 % of the pressed depth → a near-vertical wall one cell wide. Gel/putty response.</li><li><b>"Part snaps to vertical when finger B arrives."</b> The washer's rim rests inside a sharp-walled pocket. B's push must first overcome the wall; once the rim passes the lip, the stored spring energy releases at once → snap instead of a progressive roll. A long-ℓ dish has ramped walls → the rim rides up gradually.</li><li><b>"Capsule tip needed; square tip should work."</b> Correct diagnosis: the tiles are <i>laterally rigid</i> (their joints only allow vertical travel), so a square tip dragging with its bottom below tile-top level pushes on a vertical tile face that physically cannot yield sideways — it jams. The capsule only works because its round bottom converts drag into downward push on tile <i>edges</i>. This is a discretisation artifact, not physics.</li></ol>
+<h2>4. What neoprene should do — the numbers</h2>
+<p>Material data (see sources): solid neoprene <b>E ≈ 2–5 MPa, ν ≈ 0.48</b>; neoprene <i>sponge</i> (pad material) is ~10× softer — measured soft-rubber values <b>E ≈ 0.46 MPa, G ≈ 0.15 MPa (ν ≈ 0.5)</b>; open/closed-cell foams run ν ≈ 0–0.3.</p>
+<p>For a pad of thickness <b>t = 10 mm</b>, cells <b>c = 5 mm</b>, sponge-neoprene E′ ≈ 0.2–0.5 MPa, G ≈ E/3:</p>
+<pre>k_cell = E′·c²/t   =  0.3e6 × 2.5e-5 / 0.01  ≈  750 N/m    (we run 200–300: slightly softer pad — fine)
+k_link = G·t       =  0.1e6 × 0.01           ≈  1000 N/m   (we run 40–150: 10–20× TOO WEAK ← the bug)
+ratio  = k_link/k_cell ≈ (t/c)²·(G/E′) ≈ (t/c)²/3 ≈ 1.3–4
+ℓ      = c·√(ratio) ≈ 6–10 mm ≈ t             (foam/neoprene: dent spreads ≈ pad thickness)</pre>
+<p><b>Target: <code>k_link ≈ 1.5–4 × k_cell</code></b> (today: 0.2×). Because the deflection <i>shape</i> depends only on the ratio, we can keep k_cell at the validated 200–300 and raise k_link to ~400–1200 — the sink depth stays familiar, the dish widens.</p>
+<p>Additional corrections to match a continuous pad:</p>
+<ul><li><b>Drop the falloff long-range links.</b> The proper shear layer is the ring-1 Laplacian at the right strength; the falloff links implement a different, ad-hoc non-local operator (and empirically cost success: M1 56 % &lt; M0 59 %). Keep <code>falloff</code> for experiments; default it off.</li><li><b>Proximity leveling (the square-tip fix).</b> Tiles do not know an object is <i>approaching</i> — a continuous surface does, because its slope is bounded. Per control step (60 Hz), bias each tile's <b>drive target</b> (not its position — springs stay springs) toward the local contact envelope of nearby bodies (finger footprints, part underside), weighted <code>exp(−d²/2ℓ²)</code>. Tiles ahead of a dragging finger ramp down to meet it → no wall → <b>square tip works</b>, and the pocket around the washer gains real ramps → smoother roll, no snap.</li><li><b>Stability watch:</b> k_link ≈ 1000 N/m × 8 links on a 6 g tile is a stiff system at dt = 1/240. If drives ring: raise tile mass (~20 g), raise damping (c ≈ 2√(k·m)·0.5), or halve dt for the calibration probes only.</li><li><i>(Deliberately ignored for now: incompressible-rubber bulging — material displaced under the indenter re-appearing as a raised ring. Add later as a small negative ring-2 term if realism review calls for it.)</i></li></ul>
+<h2>5. Next stage (M3d "neoprene") — plan</h2>
+<p><img src="fig/01_deflection_profiles.svg" alt="deflection profiles: gel vs neoprene" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><img src="fig/02_proximity_leveling.svg" alt="proximity leveling — the square-tip fix" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><img src="fig/03_next_stage_plan.svg" alt="M3d stage plan" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<ol><li><b>Calibrate</b> — expose <code>E_eff, t, ν</code> on <code>SpringFoundation</code> and derive <code>k_cell, k_link, ℓ</code> (raw overrides stay). Neoprene presets N1 (t=8), N2 (t=10), N3 (t=15 mm).</li><li><b>Validate the profile</b> — single-press probe; fit measured centre-row deflection to <code>exp(−x/ℓ)</code>; pass = fitted ℓ within ±25 % of target and no one-cell cliffs (max step between neighbours &lt; 35 % of peak).</li><li><b>Proximity leveling</b> — implement drive-target field; verify a <b>square tip</b> drags across the bare surface without jamming (spring force stays below half the old jam force) and that tile steps ahead of the tip stay &lt; 1 mm.</li><li><b>Roll quality</b> — press+drag on the washer; pass = tilt climbs to 70°+ with <code>d(tilt)/dt</code> bounded (no single-step jump &gt; 25°) → "roll, not snap".</li><li><b>Re-run the pick ladder</b> on N1–N3 with the square tip; compare success, lift, and snap metric vs M0/M3. Keep CEM warm start.</li><li><b>Render</b> — stills + videos per N-variant (tiles view), skin video for the best; append results section here.</li></ol>
+<p>Success for the stage: ≥ M3's 86 % <b>with a square tip and no snap</b>, on a material whose measured ℓ ≈ pad thickness — i.e. the pick works <i>because</i> the material is right, not despite it.</p>
+<hr>
+<h2>6. M3d results (same day, evening)</h2>
+<p>Everything in §5 steps 1–5 was implemented and run (<code>data/2026-07-04/{profile2,profile3,lab_neo,lab_neo2}</code>).</p>
+<p><b>Profile calibration.</b> The bar-load probe found a constant <b>solver correction α ≈ 4</b>: PhysX TGS under-enforces stiff drive chains, so the dish comes out ~2× narrower than the Pasternak prediction (unchanged by solver iteration bumps). <code>neoprene()</code> therefore configures <code>couple = 4·G·t</code>. Measured ramps at k_cell = 250: ratio 6 → neighbour 44 % of peak; <b>ratio 10 → 52 / 35 / 16 % over three tiles — the fig/01 target shape.</b> (The gel: 13 %.)</p>
+<p><img src="../2026-07-04/profile3/profiles.png" alt="measured dent profiles, ratio sweep" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><b>Proximity leveling works.</b> With <code>level_targets()</code> + a <b>square tip</b>, every material in the ladder picks — including the old gel (its v1 square-tip drags jammed outright). The leveling is what makes square-tip contact possible; the coupling ratio is what shapes the dish.</p>
+<p><b>Pick ladder (8 rigs × 8 rounds each, square tip, leveling on):</b></p>
+<table border="0" cellspacing="0">
+<tr><th>material</th><th>success</th><th>arrival-snap among successes</th><th>best lift</th></tr>
+<tr><td>NEO_R6 (ratio 6)</td><td>48 %</td><td>31/31 (~52°/sample)</td><td>32.0 mm</td></tr>
+<tr><td>NEO_R10 (ratio 10)</td><td>44 %</td><td>28/28 (~54°/sample)</td><td>36.3 mm</td></tr>
+<tr><td>gel + leveling (control)</td><td>61 %</td><td>31/39 — <b>2 clean rolls found (23°/sample)</b></td><td>40.7 mm</td></tr>
+</table>
+<p><b>The honest headline: realism costs ease, and the snap moved, it didn't die.</b> On the realistic dish a one-sided press mostly pushes the washer <i>down</i> (the neighbourhood follows — that's the material being right). CEM's winning neoprene strategy became a <b>rim-press pop</b>: press the washer's extreme edge (a_off → 11.4–11.7 mm of a 12 mm radius), the washer squirts upward like a squeezed watermelon seed, catch it between the fingers. Effective — but the fast tilt jump is now a <i>policy exploit of rigid-washer dynamics</i>, no longer the pocket-wall artifact of §3. The old gel, ironically, is what allowed slow 23°/sample rolls, because its sharp pocket holds the washer's near edge while the far edge climbs.</p>
+<p><b>Fork for the next phase</b> (needs a design call):</p>
+<ol><li><b>Accept the pop-catch</b> as the realistic technique on neoprene (humans do flip washers off mousepads exactly this way) and optimise for <i>catch reliability</i> instead of penalising the fast tilt; or</li><li><b>Chase the gentle roll on neoprene</b> with a richer primitive — slower force-limited press ramps, or finger B pressing down on the rising side as a brake while A keeps pressing (a two-contact roll, closer to the original SVG intent than the current open-loop waypoints).</li></ol>
+<h3>The NEO_R10 pick, rendered (replays the lab exactly: success, 37.1 mm lift)</h3>
+<p>Pressed — note the <b>wide smooth dish</b> across the tile field (the calibrated neoprene response; compare the one-cell pocket in §2.1):</p>
+<p><img src="../2026-07-04/render_NEO_R10/p1_pressed_zoom.png" alt="NEO_R10 pressed" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p>Engaged — the washer rolled up against the <b>square</b> blue finger:</p>
+<p><img src="../2026-07-04/render_NEO_R10/p2_engaged_zoom.png" alt="NEO_R10 engaged" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p>Lifted clear:</p>
+<p><img src="../2026-07-04/render_NEO_R10/p3_lifted_zoom.png" alt="NEO_R10 lifted" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p>Full maneuver videos (~9 s each): <a href="../2026-07-04/render_NEO_R10/pick.mp4">tiles view</a><video controls preload="metadata" src="../2026-07-04/render_NEO_R10/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video> · <a href="../2026-07-04/render_NEO_R10_skin/pick.mp4">foam-skin view</a><video controls preload="metadata" src="../2026-07-04/render_NEO_R10_skin/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video></p>
+<p><i>(The gel "clean roll" candidate — 23°/sample in-lab — did NOT reproduce when replayed in the full env (<code>render_gel_cleanroll/</code>): washer left at rest. Fragile, like the M2 replays — marginal gel-material behaviours don't transfer between contexts; another point for doing realism properly.)</i></p>
+<hr>
+<h2>7. M3e — the parallel gripper picks GENTLY (late evening)</h2>
+<p>David's redesign resolved the §6 fork in favour of the gentle roll — with a different <i>primitive</i>, not a different material: bind both fingers into ONE gripper (they descend together, A ~50 % over the rim touches first), use B's spring deflection as the <b>touch sensor</b>, then <i>pull up and together</i>. Success redefined: the washer must clear the <b>press-down height</b> (hang free of the dish), not the original surface.</p>
+<p>What the iterations taught (each diagnosed from a failed smoke/CEM run): close-while-rising <b>bulldozes</b> the part sideways; closing fully at depth <b>irons it flat</b>; pressing harder mostly <b>sinks</b> (1.2 of 1.8 mm — the pad being realistic); the roll comes from <b>B rising with the edge held by friction</b>, so the winning knob is a power-law close that lags the rise and completes at the end (<code>close_pow ≈ 1.9</code>).</p>
+<p><b>Ladder v2 (8 rigs × 10 rounds each, square tip, leveling, gentle press ≤ 4.8 mm):</b></p>
+<table border="0" cellspacing="0">
+<tr><th>material</th><th>success</th><th>gentle successes (dtilt &lt; 25°/sample)</th><th>best clearance</th></tr>
+<tr><td>SOFT220 (k 220, ratio 8)</td><td><b>46 %</b> (6/8 final round)</td><td><b>7</b>, best dtilt <b>7°</b></td><td>6.0 mm</td></tr>
+<tr><td>MED250 (k 250, ratio 8)</td><td>25 %</td><td>6</td><td>5.6 mm</td></tr>
+</table>
+<p><b>The gentle pick exists on the realistic material</b>: 13 runs rolled the washer smoothly (6–13°/sample — compare ~52° for the M3d pop-catch), captured it between the fingers, and lifted it clear of the pressed dish. θ converged to a_over ≈ 0.6 (slightly more than half over the rim), press ≈ 4 mm, gap ≈ 2.8 mm, rise ≈ 12–14 mm.</p>
+<p>Two caveats, honestly measured:</p>
+<ol><li><b>The touch trigger under-fires</b> (3–16 of 160 evals; the gentle edge-rise only brushes B) — successful grips ride the wait-timeout path. On hardware this is a force-sensor threshold to tune; in the sim the fixed beat works.</li><li><b>Lab→env transfer holds for CAPTURE, not yet for full clearance.</b> The SOFT220 best replays in the full env as a genuine captured pick (washer pinched between the fingers, carried up with the gripper) but retains only ~1.3–1.9 mm of clearance and slips to ~59–89° during the rise; the marginal gentle candidates don't replay at all (same brittleness family as the M2 and gel-cleanroll replays). Next step: <b>robustness-aware selection</b> — score elites under jitter (seed, ±0.5 mm placement, surface-height offset) in-lab before declaring a winner, instead of trusting single-run rewards.</li></ol>
+<h3>The parallel-gripper pick in the full env (captured demo)</h3>
+<p>Engaged — the bound gripper has descended as one unit, A pressing ~60 % over the rim, the washer rolled between the fingers in the soft dish:</p>
+<p><img src="../2026-07-04/render_grip_hero2/p2_engaged_zoom.png" alt="parallel gripper engaged" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p>Lifted — washer pinched between the fingertips, carried clear of the bed:</p>
+<p><img src="../2026-07-04/render_grip_hero2/p3_lifted_zoom.png" alt="parallel gripper lifted" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><a href="../2026-07-04/render_grip_hero2/pick.mp4">tiles video</a><video controls preload="metadata" src="../2026-07-04/render_grip_hero2/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video> · <a href="../2026-07-04/render_grip_hero2_skin/pick.mp4">skin video</a><video controls preload="metadata" src="../2026-07-04/render_grip_hero2_skin/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video></p>
+<hr>
+<h3>Sources</h3>
+<ul><li><a href="https://blog.truegeometry.com/designs3D/Neoprene_Rubber20240329.html">Neoprene material properties (E ≈ 2–5 MPa, ν ≈ 0.48)</a></li><li><a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7602244/">Elastic properties of polychloroprene (neoprene) rubbers — E ≈ 460 kPa, G ≈ 148 kPa soft compounds</a></li><li><a href="https://www.osti.gov/pages/servlets/purl/1457403">Poisson's ratio of hyperelastic foams ≈ 0 in compression</a></li><li><a href="https://revue.ummto.dz/index.php/JMES/article/download/3844/pdf">Winkler, Pasternak and Kerr foundation models</a></li><li><a href="https://www.researchgate.net/publication/245440933_Pasternak_Model_Formulation_of_Elastic_Displacements_in_the_Case_of_a_Rigid_Circular_Foundation">Pasternak model for surface displacement of a finite elastic layer</a></li></ul>
+<h3>Data &amp; code index</h3>
+<ul><li>Model: <code>graspsort/soft_foundation.py</code> (SpringFoundation + SurfaceSkin)</li><li>Lab: <code>tools/pick_lab.py</code> · replay/render: <code>tools/render_pick.py</code></li><li>Ladder data: <code>../2026-07-04/lab_mats2/</code> (evals.jsonl, results.json, learning_curves.png)</li><li>Renders: <code>../2026-07-04/render_{M0_asis,M1_dropoff,M2_firm_local,M3_soft_local,M3_skin}/</code></li><li>Earlier dish/tilt validation: <code>../2026-07-03/{couple_0,couple_150,rf9,skin1}/</code></li></ul>
+</body></html>

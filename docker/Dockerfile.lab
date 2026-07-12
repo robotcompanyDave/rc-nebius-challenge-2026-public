@@ -1,0 +1,31 @@
+# Isaac Lab installed into the PROVEN Isaac Sim 6.0.0 image.
+#
+# Why not nvcr.io/nvidia/isaac-lab:3.0.0-beta2? That image's Kit dies on this
+# box for EVERY Kit-based script (bundled deprecated omni.isaac.ml_archive
+# torch hits `undefined symbol: ncclDevCommCreate` under driver 595 and the
+# torch stub exits the app) — verified even on scripts/tutorials/00_sim/
+# create_empty.py. Our isaac-sim:6.0.0 image runs Kit daily (pick_lab), so we
+# bring Lab to it instead: clone v3.0.0-beta2 and pip-install its packages
+# into the Isaac Sim python (the documented "binary installation" path).
+#
+#   docker build -f docker/Dockerfile.lab -t push-grasp:lab .
+FROM nvcr.io/nvidia/isaac-sim:6.0.0
+USER root
+
+ENV ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=Y PRIVACY_CONSENT=Y \
+    OMNI_KIT_ALLOW_ROOT=1 PYTHONUNBUFFERED=1 \
+    ISAACLAB_PATH=/workspace/isaaclab
+
+RUN apt-get update && apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth 1 --branch v3.0.0-beta2 \
+      https://github.com/isaac-sim/IsaacLab.git /workspace/isaaclab && \
+    ln -s /isaac-sim /workspace/isaaclab/_isaac_sim
+
+# install the Lab packages + rsl_rl into the Isaac Sim python
+RUN cd /workspace/isaaclab && ./isaaclab.sh --install rsl_rl && \
+    /isaac-sim/python.sh -m pip cache purge || true
+
+WORKDIR /workspace/push-grasp
+ENTRYPOINT ["/bin/bash", "-c"]

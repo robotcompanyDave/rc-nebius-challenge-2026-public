@@ -1,0 +1,118 @@
+<svg viewBox="0 0 820 900" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="r2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#e0483c"/></marker>
+    <marker id="b2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#2f6fe0"/></marker>
+  </defs>
+  <style>
+    .card{fill:#ffffff;stroke:#e2e6ea;stroke-width:1.5}
+    .badbar{fill:#fde8e6}
+    .goodbar{fill:#e4f5ec}
+    .num{font-size:18px;font-weight:700}
+    .cap{font-size:13px;fill:#5b6470}
+    .tag{font-size:12.5px;fill:#1f2733}
+    .wash{fill:#7f9cc4;stroke:#3f5f8f;stroke-width:1.5}
+    .fbody{fill:#454b54}
+    .fpad{fill:#8a93a0}
+    .hard{fill:#6b7280}
+    .tile{fill:#b9c2cf;stroke:#7d8794;stroke-width:1}
+    .surf{fill:none;stroke:#2fb3a3;stroke-width:4}
+    .surffill{fill:#d9f2ee}
+    .spring{fill:none;stroke:#2fb3a3;stroke-width:2}
+    .force{stroke:#e0483c;stroke-width:3}
+    .mot{stroke:#2f6fe0;stroke-width:2.5;stroke-dasharray:6 4}
+    .axis{stroke:#9aa2ad;stroke-width:1.5}
+    .curbad{fill:none;stroke:#e0483c;stroke-width:3}
+    .curgood{fill:none;stroke:#1f9d6b;stroke-width:3}
+    .band{fill:#ffd23f;opacity:.35}
+  </style>
+
+  <rect width="820" height="900" fill="#f7f8fa"/>
+  <text x="34" y="40" font-size="22" font-weight="700" fill="#1f2733">The soft-surface physics this technique needs</text>
+  <text x="34" y="62" class="cap">The gentle tilt only exists if the surface deflects smoothly in proportion to load. The current sim model can't do that.</text>
+
+  <!-- LEFT: current model -->
+  <g transform="translate(0,80)">
+    <rect x="20" y="6" width="385" height="330" rx="10" class="card"/>
+    <rect x="20" y="6" width="385" height="34" rx="10" class="badbar"/>
+    <text x="38" y="30" class="num" fill="#b3382e">✗  What the sim has now</text>
+    <!-- kinematic tiles as separate blocks -->
+    <g>
+      <rect x="55" y="205" width="30" height="16" class="tile"/>
+      <rect x="90" y="205" width="30" height="16" class="tile"/>
+      <rect x="125" y="212" width="30" height="16" class="tile"/>
+      <rect x="160" y="222" width="30" height="16" class="tile"/>
+      <rect x="195" y="212" width="30" height="16" class="tile"/>
+      <rect x="230" y="205" width="30" height="16" class="tile"/>
+      <rect x="265" y="205" width="30" height="16" class="tile"/>
+      <rect x="300" y="205" width="30" height="16" class="tile"/>
+      <rect x="335" y="205" width="30" height="16" class="tile"/>
+    </g>
+    <text x="55" y="256" class="cap">kinematic tiles snapped to a height field</text>
+    <!-- hard stop -->
+    <rect x="50" y="262" width="320" height="12" class="hard"/>
+    <text x="55" y="290" class="cap">rigid 5&#8201;mm hard stop</text>
+    <!-- washer bottomed out flat -->
+    <rect x="120" y="188" width="150" height="13" rx="2" class="wash"/>
+    <!-- finger press -->
+    <rect x="182" y="90" width="26" height="88" rx="5" class="fbody"/>
+    <rect x="180" y="176" width="30" height="11" rx="3" class="fpad"/>
+    <line x1="195" y1="120" x2="195" y2="150" class="force" marker-end="url(#r2)"/>
+    <!-- squirt arrow -->
+    <line x1="272" y1="196" x2="320" y2="196" class="mot" marker-end="url(#b2)"/>
+    <text x="285" y="188" class="cap">or slides out</text>
+    <text x="40" y="318" class="cap">Bistable: sits flat or SNAPS to vertical. No smooth,</text>
+    <text x="40" y="334" class="cap">proportional tilt. Low friction → washer squirts.</text>
+  </g>
+
+  <!-- RIGHT: needed model -->
+  <g transform="translate(415,80)">
+    <rect x="0" y="6" width="385" height="330" rx="10" class="card"/>
+    <rect x="0" y="6" width="385" height="34" rx="10" class="goodbar"/>
+    <text x="18" y="30" class="num" fill="#157a4f">✓  What it needs: elastic foundation</text>
+    <!-- continuous surface sheet, sloped: compressed under press, flat far -->
+    <path d="M35,210 C90,210 110,238 150,238 C190,238 205,214 250,210 L350,210" class="surf"/>
+    <!-- bed of springs -->
+    <g class="spring">
+      <path d="M45,275 L45,214 M60,275 L60,214"/>
+      <path d="M95,275 l0,-40 6,-5 -12,-6 12,-6 -6,-5 0,-12"/>
+      <path d="M150,275 l0,-24 6,-5 -12,-6 12,-6 -6,-5 0,-13"/>
+      <path d="M205,275 l0,-40 6,-5 -12,-6 12,-6 -6,-5 0,-6"/>
+      <path d="M260,275 L260,210 M275,275 L275,210 M320,275 L320,210 M335,275 L335,210"/>
+    </g>
+    <rect x="30" y="275" width="325" height="10" fill="#9aa2ad"/>
+    <text x="35" y="303" class="cap">springs: deflection ∝ load (compress under press,</text>
+    <text x="35" y="319" class="cap">stay tall far side) → surface slopes smoothly</text>
+    <!-- tilted washer ~13 deg -->
+    <polygon points="98,222 250,196 252,209 100,235" class="wash"/>
+    <!-- finger press off-center -->
+    <rect x="132" y="95" width="26" height="118" rx="5" class="fbody"/>
+    <rect x="130" y="211" width="30" height="11" rx="3" class="fpad"/>
+    <line x1="145" y1="120" x2="145" y2="150" class="force" marker-end="url(#r2)"/>
+    <!-- far edge lifts -->
+    <line x1="258" y1="196" x2="272" y2="180" class="mot" marker-end="url(#b2)"/>
+    <text x="255" y="176" class="cap">lifts clean</text>
+  </g>
+
+  <!-- PLOT -->
+  <g transform="translate(0,430)">
+    <rect x="20" y="6" width="780" height="300" rx="10" class="card"/>
+    <text x="40" y="34" class="num" fill="#1f2733">Far-edge tilt vs press depth — the behaviour we're missing</text>
+    <!-- axes -->
+    <line x1="90" y1="250" x2="720" y2="250" class="axis"/>
+    <line x1="90" y1="70" x2="90" y2="250" class="axis"/>
+    <text x="360" y="285" class="tag">press depth  →</text>
+    <text x="34" y="160" class="tag" transform="rotate(-90 34 160)">far-edge tilt  →</text>
+    <!-- working band 10-20 deg -->
+    <rect x="90" y="150" width="630" height="45" class="band"/>
+    <text x="600" y="145" font-size="12.5" fill="#8a6d1f">target band 10–20°</text>
+    <line x1="90" y1="150" x2="720" y2="150" stroke="#e0c15a" stroke-width="1" stroke-dasharray="4 3"/>
+    <line x1="90" y1="195" x2="720" y2="195" stroke="#e0c15a" stroke-width="1" stroke-dasharray="4 3"/>
+    <!-- current: flat then vertical jump (snap) -->
+    <path d="M90,247 L300,244 L305,244 L305,90 L720,90" class="curbad"/>
+    <text x="330" y="86" font-size="13" fill="#e0483c" font-weight="600">now: nothing, then SNAP to vertical (90°)</text>
+    <!-- needed: smooth ramp through the band -->
+    <path d="M90,247 C230,247 300,215 420,172 C520,138 620,110 720,96" class="curgood"/>
+    <text x="440" y="228" font-size="13" fill="#157a4f" font-weight="600">needed: smooth ramp — dwell in the band</text>
+    <text x="40" y="278" class="cap">A controllable pick lives in the yellow band: press a little, get a little tilt, hold it steady while finger B enters. The snap gives you no dwell there.</text>
+  </g>
+</svg>

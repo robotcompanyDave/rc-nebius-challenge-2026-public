@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 430" font-family="Helvetica,Arial,sans-serif">
+  <rect width="900" height="430" fill="#fbfaf7"/>
+  <text x="450" y="32" text-anchor="middle" font-size="19" font-weight="bold" fill="#222">M3d "neoprene" — stage plan</text>
+  <text x="450" y="52" text-anchor="middle" font-size="12" fill="#666">each box gates the next; every gate has a measurable pass criterion</text>
+
+  <!-- row 1 -->
+  <g font-size="12">
+    <!-- 1 calibrate -->
+    <g transform="translate(30,80)">
+      <rect width="255" height="96" rx="8" fill="#e7eef7" stroke="#3b6ea5" stroke-width="1.5"/>
+      <text x="12" y="22" font-weight="bold" fill="#26527d">1 · Calibrate to material physics</text>
+      <text x="12" y="42" fill="#333">SpringFoundation(E_eff, t, ν) →</text>
+      <text x="12" y="58" fill="#333">k_cell = E′c²/t,  k_link = G·t</text>
+      <text x="12" y="78" fill="#333">presets N1/N2/N3 = t 8/10/15 mm</text>
+    </g>
+    <path d="M289,128 L323,128" stroke="#777" stroke-width="2" marker-end="url(#a)"/>
+    <!-- 2 profile -->
+    <g transform="translate(327,80)">
+      <rect width="255" height="96" rx="8" fill="#e7eef7" stroke="#3b6ea5" stroke-width="1.5"/>
+      <text x="12" y="22" font-weight="bold" fill="#26527d">2 · Validate dent profile</text>
+      <text x="12" y="42" fill="#333">single press, fit w(x)=w₀e^(−x/ℓ)</text>
+      <text x="12" y="62" fill="#1e7a45">PASS: ℓ within ±25% of target;</text>
+      <text x="12" y="78" fill="#1e7a45">no neighbour step &gt; 35% of peak</text>
+    </g>
+    <path d="M586,128 L620,128" stroke="#777" stroke-width="2" marker-end="url(#a)"/>
+    <!-- 3 leveling -->
+    <g transform="translate(624,80)">
+      <rect width="245" height="96" rx="8" fill="#e7eef7" stroke="#3b6ea5" stroke-width="1.5"/>
+      <text x="12" y="22" font-weight="bold" fill="#26527d">3 · Proximity leveling</text>
+      <text x="12" y="42" fill="#333">drive-target field from finger/part</text>
+      <text x="12" y="62" fill="#1e7a45">PASS: SQUARE tip drags bare</text>
+      <text x="12" y="78" fill="#1e7a45">surface, steps ahead &lt; 1 mm, no jam</text>
+    </g>
+  </g>
+
+  <!-- row 2 (right to left) -->
+  <path d="M746,180 L746,214" stroke="#777" stroke-width="2" marker-end="url(#a)"/>
+  <g font-size="12">
+    <!-- 4 roll quality -->
+    <g transform="translate(624,218)">
+      <rect width="245" height="96" rx="8" fill="#eef7ee" stroke="#1e7a45" stroke-width="1.5"/>
+      <text x="12" y="22" font-weight="bold" fill="#1e7a45">4 · Roll, not snap</text>
+      <text x="12" y="42" fill="#333">press + drag on the washer</text>
+      <text x="12" y="62" fill="#1e7a45">PASS: tilt → 70°+ with no single</text>
+      <text x="12" y="78" fill="#1e7a45">jump &gt; 25° between samples</text>
+    </g>
+    <path d="M620,266 L586,266" stroke="#777" stroke-width="2" marker-end="url(#a)"/>
+    <!-- 5 ladder -->
+    <g transform="translate(327,218)">
+      <rect width="255" height="96" rx="8" fill="#eef7ee" stroke="#1e7a45" stroke-width="1.5"/>
+      <text x="12" y="22" font-weight="bold" fill="#1e7a45">5 · Pick ladder on N1–N3</text>
+      <text x="12" y="42" fill="#333">pick_lab CEM, square tip, warm start;</text>
+      <text x="12" y="58" fill="#333">metrics: success · lift · snap count</text>
+      <text x="12" y="78" fill="#1e7a45">PASS: ≥ 86% (M3 bar) w/ square tip</text>
+    </g>
+    <path d="M323,266 L289,266" stroke="#777" stroke-width="2" marker-end="url(#a)"/>
+    <!-- 6 render/report -->
+    <g transform="translate(30,218)">
+      <rect width="255" height="96" rx="8" fill="#f7f0e7" stroke="#a5763b" stroke-width="1.5"/>
+      <text x="12" y="22" font-weight="bold" fill="#7d5226">6 · Render + report</text>
+      <text x="12" y="42" fill="#333">stills + videos per N-variant (tiles),</text>
+      <text x="12" y="58" fill="#333">skin video for the winner,</text>
+      <text x="12" y="78" fill="#333">append results to this report</text>
+    </g>
+  </g>
+
+  <!-- risks strip -->
+  <g transform="translate(30,346)" font-size="11.5" fill="#444">
+    <rect x="-10" y="-14" width="850" height="66" fill="#f0ece2" rx="6"/>
+    <text x="0" y="4" font-weight="bold" fill="#7d5226">risks / watch items</text>
+    <text x="0" y="23">· stiff-drive stability at k_link ≈ 1000 N/m, dt 1/240 → raise tile mass/damping or halve dt for probes    · M2-style lab↔env replay divergence (open task) — re-check one N replay early</text>
+    <text x="0" y="42">· leveling must not mask real contact (bias targets only within ~2ℓ of a body, cap at the body's underside)    · falloff links default OFF (wrong operator; ring-1 at right strength is the physics)</text>
+  </g>
+
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#777"/>
+    </marker>
+  </defs>
+</svg>

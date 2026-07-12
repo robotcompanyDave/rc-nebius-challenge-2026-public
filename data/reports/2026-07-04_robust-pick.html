@@ -1,0 +1,100 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Soft-surface materials report — 2026-07-04</title>
+<style>
+body{font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:880px;
+margin:24px auto;padding:0 16px;color:#222;line-height:1.55;background:#fbfaf7}
+h1,h2,h3{color:#1a1a1a} h2{border-bottom:2px solid #e0d9c8;padding-bottom:4px}
+table{border-collapse:collapse;margin:12px 0;font-size:14px}
+th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}
+th{background:#f0ece2} pre{background:#f4f1ea;padding:12px;border-radius:6px;
+overflow-x:auto;font-size:13px} code{background:#f0ece2;padding:1px 5px;
+border-radius:3px;font-size:0.92em} hr{border:none;border-top:2px solid #e0d9c8;
+margin:28px 0}
+</style></head><body>
+<h1>Robust pick selection — closing the lab→env gap</h1>
+<p><i>Phase goal: a parallel-gripper washer-pick policy that survives context changes — selected under jitter in the lab, validated by replay in the full environment with ≥ 3 mm clearance. Follow-up to <a href="2026-07-04_materials.md">2026-07-04_materials.md</a> §7 (M3e), where CAPTURE transferred but clean clearance did not.</i></p>
+<h2>The problem</h2>
+<p>M3e's CEM selects winners on <b>single lab runs</b>. The elite that looks best is often the one that got lucky: marginal candidates (gentle 3–5 mm-clearance picks in-lab) fail outright when replayed in the full environment, while the policy <i>family</i> clearly works (capture reproduces every time). Selection is optimizing for peak, not for robustness.</p>
+<h2>Method</h2>
+<ol><li><b>Noise during search</b> — every CEM evaluation gets light jitter (washer placement ±1 mm, random yaw, gripper height ±0.5 mm), so the optimizer can't camp on knife-edge solutions.</li><li><b>Jitter gauntlet for selection</b> — the top candidates are each re-run on 8 <i>different</i> jitters simultaneously (one per rig — the same trick that gives us a CEM population gives us a robustness panel). Final winner = best <b>worst-2-mean</b> across the panel, not best single run.</li><li><b>Exit gate</b> — the winner must replay in the full <code>GraspSortEnv</code> with ≥ 3 mm clearance above the press-down height.</li></ol>
+<p>Also in this phase: touch-sensor debounce (the M3e trigger under-fired and grips rode the wait-timeout), and a Nebius capacity probe on non-L40S GPUs (L40S at capacity; trying H100) for faster ladder throughput if it provisions.</p>
+<h2>Results</h2>
+<p><b>Search under noise finds deeper basins.</b> With every eval jittered, CEM's best single runs <i>improved</i> over the noise-free M3e ladder (SOFT220 best clearance 7.2 mm vs 6.0; press pushed to the new 4.8 mm bound, close_pow ≈ 2.5). Training on noise did not cost performance — it bought it.</p>
+<p><b>The gauntlet works exactly as designed.</b> SOFT220's panel (<code>data/2026-07-04/lab_robust/results.json → gauntlet</code>):</p>
+<table border="0" cellspacing="0">
+<tr><th>candidate</th><th>panel successes</th><th>mean</th><th><b>worst-2-mean</b></th></tr>
+<tr><td>cand0 (winner)</td><td>4/8</td><td>2.68</td><td><b>2.32</b></td></tr>
+<tr><td>cand1</td><td>3/8</td><td>2.47</td><td>1.60</td></tr>
+<tr><td>cand2</td><td><b>6/8</b></td><td>2.39</td><td><b>0.32</b></td></tr>
+<tr><td>cand3</td><td>4/8</td><td>2.44</td><td>1.43</td></tr>
+</table>
+<p>cand2 is the cautionary tale: <i>most</i> successes on the panel, but its failures are catastrophic — single-run (or even mean-based) selection would love it. Worst-2-mean picks cand0, whose bad days still hold the washer. MED250's winner scored only 1.61 → <b>SOFT220 confirmed as the pick surface</b>.</p>
+<h3>What actually separates the candidates</h3>
+<p>The four are near-siblings — press identical (4.8 mm, at the bound), brace/close_pow/g0 within a few percent. The discriminating knobs:</p>
+<table border="0" cellspacing="0">
+<tr><th>param</th><th>cand0 ★</th><th>cand1</th><th>cand2 ⚠</th><th>cand3</th></tr>
+<tr><td>a_over (rim overhang)</td><td><b>0.622</b></td><td>0.650 <i>(bound)</i></td><td>0.650 <i>(bound)</i></td><td>0.626</td></tr>
+<tr><td>pinch gap (mm)</td><td><b>2.03</b></td><td>2.04</td><td>2.21</td><td>2.20</td></tr>
+<tr><td>rise (mm)</td><td>19.2</td><td>16.2</td><td>17.7</td><td>19.0</td></tr>
+</table>
+<p>Panel per jitter — reward (clearance mm), <code>+</code> full success, <code>X</code> failure:</p>
+<table border="0" cellspacing="0">
+<tr><th>jitter</th><th>cand0</th><th>cand1</th><th>cand2</th><th>cand3</th></tr>
+<tr><td>nominal</td><td>2.19 (1.0)</td><td>2.42 (2.3)</td><td><b>0.35 X</b></td><td>2.92 (4.9) +</td></tr>
+<tr><td>x +1 / −1 mm</td><td>2.95 + / 2.96 +</td><td>2.37 / <b>0.90 X</b></td><td>2.94 + / 2.97 +</td><td>2.49 / 2.44</td></tr>
+<tr><td>y +1 / −1 mm</td><td>2.45 / 2.46</td><td>2.92 + / 3.28 +</td><td><b>0.30 (−283!) X</b> / 3.30 +</td><td>2.91 + / <b>0.42 X</b></td></tr>
+<tr><td>z +0.5 / −0.5 mm</td><td>2.85 + / 2.56</td><td>2.30 / 3.02 +</td><td>2.84 + / 3.38 +</td><td>2.82 + / 3.01 +</td></tr>
+<tr><td>combo</td><td>2.99 +</td><td>2.56</td><td>3.03 +</td><td>2.55</td></tr>
+</table>
+<p>Physical reading:</p>
+<ul><li><b>a_over = 0.65 (bound-pinned) is flingy.</b> Pressing 65 % off the rim gives the pop more energy: cand2's y+1 failure has clearance <b>−283 mm</b> — the washer was flung off the bed entirely; its nominal failure popped the washer 7 mm up and never caught it. Six great runs, two violent ones.</li><li><b>Gap 2.2 mm is a loose pinch.</b> The washer is 2.5 mm thick: 2.2 leaves only 0.3 mm of spring interference (vs 0.5 at 2.0 mm) — cand2/3's failures are mostly "popped but not held".</li><li><b>Off-centre-in-y is the killer jitter</b>: edge contact lands off the finger midline, the pop goes asymmetric, the washer escapes sideways.</li><li><b>cand0 wins by having no failure mode, not by brilliance</b> — tamer press position, real pinch, tallest rise. Its worst cells are <i>low lifts while still holding</i> (nominal 1.0 mm!), never fireworks.</li></ul>
+<p>Consistency check: cand0's worst panel cell is its <b>nominal</b> (1.0 mm) and the full-env replay landed at 2.0 mm — the env behaves like a mid-grade jitter, supporting the constant-offset theory over anything mysterious.</p>
+<p><i>(The replay videos below are cand0, replayed nominally in the full env.)</i></p>
+<p><b>Exit gate: closer, not passed.</b> The robust winner replays in the full env <b>captured and fully vertical (89.9°) at 2.0 mm clearance</b> — the best transfer yet (M3e's hand-picked heroes managed 59° / 1.9 mm) — but short of the 3 mm gate. The remaining gap is <i>systematic</i>: every env replay sheds ~3–5 mm of clearance relative to its lab twin, regardless of candidate. That constant offset (bed-on-slab vs free-hanging tiles, or a floor-reference mismatch) is now the single diagnostic to chase — instrument both sides with the same θ and diff the washer z/tilt traces.</p>
+<p>Replay renders: <a href="../2026-07-04/render_robust/pick.mp4">tiles video</a><video controls preload="metadata" src="../2026-07-04/render_robust/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video> · <a href="../2026-07-04/render_robust_skin/pick.mp4">skin video</a><video controls preload="metadata" src="../2026-07-04/render_robust_skin/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video></p>
+<p><img src="../2026-07-04/render_robust/p3_lifted_zoom.png" alt="robust winner lifted" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><b>Nebius: parked.</b> H100 (<code>gpu-h100-sxm</code>) probe hit the same PROVISIONING→ERROR as every L40S attempt — the outage is <b>tenant-level quota</b>, not GPU-type capacity. Escalate via support ticket; no more probes.</p>
+<h2>Eye diagrams — roll smoothness per candidate</h2>
+<p>Washer tilt (90° = vertical target) vs <b>finger-closure fraction</b>, all 8 jitter-panel runs overlaid per candidate, bold line = mean (green = success, red = fail). Like a telecom eye diagram: a tight bundle = a repeatable, smooth roll; scattered traces = luck.</p>
+<p><img src="../2026-07-04/lab_eye/eye_all.png" alt="eye all candidates" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p>Individual: <a href="../2026-07-04/lab_eye/eye_cand0.png">cand0</a> · <a href="../2026-07-04/lab_eye/eye_cand1.png">cand1</a> · <a href="../2026-07-04/lab_eye/eye_cand2.png">cand2</a> · <a href="../2026-07-04/lab_eye/eye_cand3.png">cand3</a></p>
+<p>How to read them:</p>
+<ul><li>Traces that jump straight to 90° at closure ≈ 0 reached vertical <b>during the press/brace</b> (the pop happened before any closing) and the fingers just collect the washer.</li><li>The interesting traces are the <b>ramps</b>: a gradual climb across the closure axis is the true two-contact roll. <b>cand1 has the tightest ramp bundle</b> — three traces climbing 25°→90° almost on top of each other, the cleanest "open eye" of the four.</li><li>Dead lines at 0° are misses (washer escaped before the grip).</li></ul>
+<p><b>And an important honest finding:</b> this trace run re-executed the <i>same 4 candidates on the same 8-jitter panel</i> — and the scores moved (cand0 robust 2.32 → 0.57, cand1 1.60 → 2.48; the "winner" flipped). Same θ, same jitters, fresh scene boot → different outcomes. The gauntlet measures a real distribution, and one panel is one sample of it: <b>selection needs repeated panels (2–3×) before the robust score is trustworthy.</b> This run-to-run sensitivity is also the lab↔env transfer story in miniature — the maneuver lives near a stability boundary, and cand0/cand1 are statistically indistinguishable on current evidence (cand1's roll shape is the smoother).</p>
+<h2>Smooth-ramp scale-up (late night) — violence bred out, strategy discovered</h2>
+<p>Directive: <i>rate sharp jumps and flips worse than failure</i> (high forces can kick the part out of the area, ending the episode chain), run many more iterations, and squeeze the hardware. Method + bench in the <a href="2026-07-04_training-technique.html">training-technique doc</a>; config adopted: 24 rigs, 60 Hz control, 10×10 beds ≈ <b>2× evals/hour</b>, physics context unchanged (GPU solver rejected — it <i>changes the dynamics</i>).</p>
+<p><b>Run 1 — 576 evals under the new reward.</b> Violence got bred out on schedule: snaps 22/24 → 7/24 across rounds, population mean |Δtilt| 47°→21°/sample, 12 escapes in 576 (2 %). All top-6 candidates were <b>clean successes</b> (Δtilt 9–14°/sample, clearance 4.5–5.5 mm) — under the old reward the top was ~50°/sample. But the 3× repeated panel (24 jitters each) exposed the frontier honestly: candidates were either <i>sometimes-successful with violent tails</i> (10–12/24 with occasional escapes) or <i>never-violent but rarely successful</i> (2/24). The eye diagrams also identified the dominant violence mode under jitter: <b>chatter</b> — 30↔85° sawtooth oscillation of the washer between the fingers during the close (not the press pop).</p>
+<p><b>Run 2 — refinement seeded at the gentlest shape.</b> The stall-ramps in the eye diagram said "under-driven, not wrong", so a second CEM (288 evals) was seeded there. It converged fast (15/24 successes with 1 snap by the final round) and <b>discovered a cleaner strategy</b>: <code>close_pow → 0.4</code> (at the bound) + <code>rise → 31.5 mm</code> (at the bound) — <b>pinch EARLY at low tilt, then a tall slow rise rolls the captive washer up between the fingers</b>. The washer is held the entire way; there is nothing left to fling.</p>
+<p><b>Final 3×-panel (24 jitters per candidate):</b></p>
+<table border="0" cellspacing="0">
+<tr><th>candidate</th><th>success</th><th>mean</th><th>worst-2</th><th>escapes</th><th>character</th></tr>
+<tr><td><b>refined early-close (winner)</b></td><td><b>12/24</b></td><td><b>1.90</b></td><td>0.08</td><td><b>0/24</b></td><td>worst cases are <i>picks with chatter</i> (clr 4.8–5.3 mm even in the bottom-5)</td></tr>
+<tr><td>refined variant</td><td>9/24</td><td>1.65</td><td>0.12</td><td>0</td><td>similar</td></tr>
+<tr><td>tall-rise variant</td><td>6/24</td><td>0.36</td><td>−2.09</td><td>1</td><td>one escape tail</td></tr>
+<tr><td>original gentle control</td><td>2/24</td><td>0.66</td><td>0.29</td><td>0</td><td>safe, under-driven</td></tr>
+</table>
+<p>The formal worst-2 metric ties the winner with the old control (0.08 vs 0.29, within panel noise) — but at 6× the success rate with <b>zero part losses in 24 jittered attempts</b>, the early-close strategy is the deployment pick. Winner θ = <code>a_over 0.56, g0 27.8, press 3.3 mm, close_pow 0.4, gap 1.8 mm, rise 31.2 mm, brace 2.3 mm</code>.</p>
+<h3>The final four, in parameters and in words</h3>
+<p><i>(Naming note: cand numbers restart per phase — these are the FINAL-gauntlet four, all on the same SOFT220 material; they differ only in maneuver parameters. cand0–2 came from the refinement run, cand3 is the pre-refinement gentle control.)</i></p>
+<table border="0" cellspacing="0">
+<tr><th>param</th><th>cand0</th><th>cand1</th><th><b>cand2 ★</b></th><th>cand3 (control)</th></tr>
+<tr><td>a_over (rim overhang)</td><td>0.584</td><td>0.603</td><td><b>0.557</b></td><td>0.584</td></tr>
+<tr><td>g0 approach spacing (mm)</td><td>29.5</td><td>28.1</td><td><b>27.8</b></td><td>29.1</td></tr>
+<tr><td>press depth (mm)</td><td>3.4</td><td><b>3.9</b></td><td>3.3</td><td>2.7</td></tr>
+<tr><td>close_pow (close timing)</td><td>0.40 early</td><td>0.61 mid</td><td><b>0.40 early</b></td><td>1.01 simultaneous</td></tr>
+<tr><td>pinch gap (mm)</td><td>1.7</td><td>1.7</td><td>1.8</td><td>1.9</td></tr>
+<tr><td>rise (mm)</td><td>31.5</td><td>30.2</td><td><b>31.2</b></td><td>12.5</td></tr>
+<tr><td>panel: success / escapes</td><td>6/24 · 1</td><td>9/24 · 0</td><td><b>12/24 · 0</b></td><td>2/24 · 0</td></tr>
+</table>
+<p>In words:</p>
+<ul><li>**cand2 (winner) is the <i>snug, patient</i> one** — fingers start closest together, presses nearest the washer's centre-side of the rim, pinches earliest, then takes the tallest, slowest ride up. Nothing about it is fast; it holds the washer before anything interesting can happen.</li><li><b>cand0 is cand2's twin, shifted outward</b> — same early pinch and tall rise, but it presses ~3 mm further out on the rim and approaches with wider-set fingers. That small extra leverage is enough to make it <i>flingier</i>: it lost the part once on the panel (the only escape among the four) and its floor is much worse (−2.09 vs 0.08).</li><li>**cand1 is the <i>assertive</i> one** — presses ~0.6 mm deeper than the winner and grips later (close_pow 0.61): more energy into the pad, more washer motion before capture. Middle of the pack: more successes than cand0, rougher rolls than cand2, no escapes.</li><li>**cand3 is the <i>timid</i> one** — the shallowest press and less than half the rise, closing while rising. It almost never finishes the roll (2/24) but also never breaks anything; its eye diagram is the tightest bundle at the <i>bottom</i> of the plot. cand2 is what cand3 became once it was given enough rise to finish the job.</li></ul>
+<p>One-line ranking: <b>assertiveness cand1 &gt; cand0 &gt; cand2 &gt; cand3; safety cand2 ≈ cand3 &gt; cand1 &gt; cand0; usefulness = cand2</b>, because it's the only one that combines cand3's floor with a real success rate.</p>
+<p><img src="../2026-07-04/lab_gaunt_final/eye_all.png" alt="final eye diagrams" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:8px 0"></p>
+<p><b>Full-env replay (nominal): a GENTLE failure — the reward's definition of acceptable.</b> The winner did not capture in the full env (washer ends flat, in place, clearance intact, zero violence, no escape) — and notably the <b>touch sensor fired in the env for the first time</b> (every earlier phase rode the timeout). In-lab 12/24 vs env-nominal miss re-confirms the systematic lab↔env offset as <b>the</b> gating diagnostic (§Next) — but the failure mode is now exactly what was asked for: when this policy misses, the part stays put and the cell can simply try again.</p>
+<p><a href="../2026-07-04/render_final/pick.mp4">winner replay — tiles</a><video controls preload="metadata" src="../2026-07-04/render_final/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video> · <a href="../2026-07-04/render_final_skin/pick.mp4">skin</a><video controls preload="metadata" src="../2026-07-04/render_final_skin/pick.mp4" style="display:block;max-width:640px;width:100%;margin:8px 0;border:1px solid #ddd;border-radius:6px"></video></p>
+<h2>Next</h2>
+<ol><li><b>Trace-diff the lab↔env offset</b> (one instrumented run each side, same θ) — likely a constant, fixable at the source.</li><li>Then the M3 integration: <code>soft_foundation</code> + this maneuver into <code>GraspSortEnv</code> proper, press-roll as a behavior-tree strategy, measured against the 2.4 % washer-flat baseline.</li></ol>
+<h2>Data &amp; code</h2>
+<ul><li>Lab: <code>tools/pick_lab.py</code> (parallel mode + jitter machinery, this phase)</li><li>Runs: <code>data/2026-07-04/lab_robust*/</code></li><li>Replay: <code>tools/render_pick.py</code> → <code>data/2026-07-04/render_robust*/</code></li></ul>
+</body></html>
