@@ -4,9 +4,10 @@
 # all 15 jobs CONCURRENT. Material noise + placement + roll always on.
 set -u
 export PATH="$HOME/.nebius/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-OUT=~/RC/rc-spike-nebius-basic/data/2026-07-11/materials
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+OUT="${OUT:-$REPO/data/runs/materials}"
 LOG="$OUT/stage3.log"
-GRID=~/RC/rc-spike-soft-surface/spikes/push-grasp/configs/materials_grid.json
+GRID="${GRID:-$REPO/configs/materials_grid.json}"
 say(){ echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
 
 matjson(){ python3 -c "

@@ -4,9 +4,11 @@ version: '3'
 
 vars:
   # Nebius container registry + project (from the platform deploy config).
-  REGISTRY: '{{.REGISTRY | default "<your-registry>"}}'
-  IMAGE: '{{.REGISTRY}}/rc-grasp-sort:latest'
-  PROJECT_ID: '{{.PROJECT_ID | default "<your-project-id>"}}'
+  REGISTRY:
+    sh: echo "${NEBIUS_REGISTRY:-<your-registry>}"
+  IMAGE: '{{.REGISTRY}}/rc-grasp-sort:{{.TAG | default "roll"}}'
+  PROJECT_ID:
+    sh: echo "${NEBIUS_PROJECT_ID:-<your-project-id>}"
   BUCKET: '{{.BUCKET | default "rc-grasp-sort"}}'        # object-storage bucket for datasets/reports
   # AI Jobs mount a bucket by its ID (not name) via --volume; resolve once with
   #   nebius storage bucket get-by-name --name $BUCKET --format json | jq -r .metadata.id

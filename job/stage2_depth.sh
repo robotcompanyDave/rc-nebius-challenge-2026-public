@@ -3,9 +3,10 @@
 # warm-started from the previous MUθ. Links run CONCURRENTLY across materials.
 set -u
 export PATH="$HOME/.nebius/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-OUT=~/RC/rc-spike-nebius-basic/data/2026-07-11/materials
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+OUT="${OUT:-$REPO/data/runs/materials}"
 LOG="$OUT/stage2.log"
-GRID=~/RC/rc-spike-soft-surface/spikes/push-grasp/configs/materials_grid.json
+GRID="${GRID:-$REPO/configs/materials_grid.json}"
 say(){ echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
 
 FINALISTS="PU_soft_10 SIL_gel_15 EVA_firm_10 NEO_sponge_12"

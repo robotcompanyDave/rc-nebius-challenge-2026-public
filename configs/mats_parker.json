@@ -1,0 +1,5 @@
+[
+  {"name": "PARKER_d24", "stiffness": 300.0, "damping": 24.0,
+   "couple": 3000.0, "couple_damp": 8.0, "falloff": 0.0, "cutoff": 0.10,
+   "leveling": true, "btip": "square", "mode": "parallel"}
+]

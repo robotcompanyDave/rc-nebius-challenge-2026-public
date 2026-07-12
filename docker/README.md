@@ -3,7 +3,7 @@
 We run the sim in the **official Isaac Sim container** instead of the native
 `~/TOOLS/isaac-sim` install — the same method (and the same image) that
 `rc-remote-platform`'s gateway uses
-([`deploy/compose/docker-compose.yml`](../../../../rc-remote-platform/deploy/compose/docker-compose.yml)).
+([`deploy/compose/docker-compose.yml`](internal platform repo — not required for this project)).
 
 **Why Docker.** The container path gives a clean, reproducible Isaac runtime and —
 critically — a **working RTX renderer**: with `--runtime=nvidia` +
@@ -27,7 +27,7 @@ into it; instead:
 ## Setup (once)
 
 ```bash
-cd ~/RC/rc-spike-soft-surface/spikes/push-grasp
+cd <this-repo>
 docker build -f docker/Dockerfile.dev -t push-grasp:dev .   # GPU-free; ~1–2 min
 ```
 

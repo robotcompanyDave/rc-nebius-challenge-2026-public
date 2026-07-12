@@ -4,7 +4,8 @@
 # Caps: MAX_JOBS relaunches, MAX_GPU_S cumulative seconds, TARGET_UPD updates.
 set -u
 export PATH="$HOME/.nebius/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-OUT=~/RC/rc-spike-nebius-basic/data/2026-07-11/resid
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+OUT="${OUT:-$REPO/data/runs/resid}"
 LOG="${RLOG:-$OUT/relaunch.log}"
 RAW="${RAW:-$OUT/chainA.progress.raw}"
 INITW="${INITW:-$OUT/initw_next.npz}"

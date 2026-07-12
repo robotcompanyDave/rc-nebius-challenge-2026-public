@@ -176,7 +176,7 @@ The pool that matters here is <code>msp.cloudapps.gpu.*</code>:</p>
 <h2>Reproduce</h2>
 <div class="card"><pre>
 # on the build host (has the image + Nebius creds):
-~/RC/rc-spike-nebius-basic/job/isaac_lab_nebius_test.sh
+job/isaac_lab_nebius_test.sh
 
 # inspect the winning job directly:
 nebius ai job get  &lt;aijob-id&gt;

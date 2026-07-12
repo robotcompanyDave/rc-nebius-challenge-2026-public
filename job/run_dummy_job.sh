@@ -28,7 +28,5 @@ nebius ai job create \
   --image "$IMAGE" \
   --restart-policy never \
   --timeout 1h \
-  --container-command 'bash' \
-  --args '-c' \
-  --args 'echo "=== Nebius Jobs smoke test ==="; echo "host: $(hostname)"; echo "date: $(date -u)"; nvidia-smi; echo "=== OK ==="' \
+  --container-command 'nvidia-smi' \
   --format json

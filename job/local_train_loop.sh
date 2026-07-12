@@ -2,7 +2,8 @@
 # Free local ES seed on the 5080: fresh docker container per process
 # (leak-proof), state persists on disk, logs appended. Seed 7.
 set -u
-SPIKE="$HOME/RC/rc-spike-soft-surface/spikes/push-grasp"
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+SPIKE="$REPO"
 cd "$SPIKE" || exit 1
 TUNED="0.47040,0.02877,0.00340,0.40000,0.00176,0.01063,0.00220,0.00221,-5.55072"
 mkdir -p data/rp2_local

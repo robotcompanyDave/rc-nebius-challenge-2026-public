@@ -4,10 +4,11 @@
 # Harvests per-material MUθ + mu-panel score from the log windows.
 set -u
 export PATH="$HOME/.nebius/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-OUT=~/RC/rc-spike-nebius-basic/data/2026-07-11/materials
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+OUT="${OUT:-$REPO/data/runs/materials}"
 mkdir -p "$OUT"
 LOG="$OUT/stage1.log"
-GRID=~/RC/rc-spike-soft-surface/spikes/push-grasp/configs/materials_grid.json
+GRID="${GRID:-$REPO/configs/materials_grid.json}"
 TUNED="0.47040,0.02877,0.00340,0.40000,0.00176,0.01063,0.00220,0.00221,-5.55072"
 say(){ echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
 

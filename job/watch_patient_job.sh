@@ -6,8 +6,9 @@
 set -uo pipefail
 export HOME="${HOME:-/tmp}"
 export PATH="$HOME/.nebius/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
 
-SPIKE="$HOME/RC/rc-spike-nebius-basic"
+SPIKE="${SPIKE:-$REPO}"
 # locate the newest patient-job id
 PJ="$(ls -1t "$SPIKE"/data/*/lab/patient-job.txt 2>/dev/null | head -1)"
 [ -n "$PJ" ] || exit 0

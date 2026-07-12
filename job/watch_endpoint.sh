@@ -5,7 +5,8 @@
 set -uo pipefail
 export HOME="${HOME:-/tmp}"
 export PATH="$HOME/.nebius/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-SPIKE="$HOME/RC/rc-spike-nebius-basic"; DATA="$SPIKE/data"
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+SPIKE="${SPIKE:-$REPO}"; DATA="$SPIKE/data"
 
 EID="$(grep -oE 'aiendpoint-[a-z0-9]+' "$DATA/graspsvc-endpoint.txt" 2>/dev/null | head -1)"
 [ -n "$EID" ] || exit 0

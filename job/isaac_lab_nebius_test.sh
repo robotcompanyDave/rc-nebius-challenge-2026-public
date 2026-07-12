@@ -6,6 +6,7 @@
 # rendering) as a Nebius AI Job, to demonstrate a robot-simulation batch job
 # on Nebius for the Serverless AI Builders Challenge.
 #
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
 # Capacity has been jammed at peak (L40S + H100 on-demand both failed/stalled
 # on 2026-07-05), so this is meant to run OFF-PEAK (~04:30 CEST) and it tries
 # several GPU / allocation combos until one actually provisions and runs.
@@ -22,7 +23,7 @@ export PATH="$HOME/.nebius/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
 export NEBIUS_PROFILE="sa-sim"
 PROFILE_ARG="--profile sa-sim"
 
-SPIKE="$HOME/RC/rc-spike-nebius-basic"
+SPIKE="${SPIKE:-$REPO}"
 PARENT="${NEBIUS_PROJECT_ID:?set NEBIUS_PROJECT_ID}"                       # eu-north1 (image lives here)
 IMAGE="${NEBIUS_REGISTRY:?set NEBIUS_REGISTRY}/isaac-lab-test:v3"   # v3 = clean ENTRYPOINT + refreshed rsl_rl
 

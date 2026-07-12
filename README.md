@@ -33,7 +33,7 @@ Jobs** to run everything that is too heavy for one workstation: dataset generati
   every update** — the log line *is* the model artifact, so a killed job loses ≤ 1 update.
 - **Scale-to-zero economics:** test locally first, then pay by the hour only while a job runs —
   and run several chains in parallel on one home GPU budget.
-- A CPU **Serverless Endpoint** (`graspsvc`, `docker/`) serves the trained scorer over HTTPS.
+- A CPU **Serverless Endpoint** (`endpoint/` — FastAPI app, Dockerfile, deploy script, baked `model.npz`) serves the trained scorer over HTTPS.
 
 ## Hardware configuration
 
@@ -60,16 +60,21 @@ local runs (`ISAAC=~/TOOLS/isaac-sim/python.sh` or your path), and your own Nebi
 ```bash
 export NEBIUS_REGISTRY=<your container registry>      # cr.<region>.nebius.cloud/<id>
 export NEBIUS_PROJECT_ID=<your project id>            # project-…
-# object storage credentials for job outputs:
+# object storage credentials for job outputs (create a bucket + a service-account
+# static key in the Nebius console, or:  nebius storage bucket create --name <bucket> …):
 export AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=…
 ```
+
+Both the `Taskfile` and the `job/*.sh` scripts read these `NEBIUS_*` variables. No local GPU?
+Every local step can also run inside the public `nvcr.io/nvidia/isaac-sim:6.0.0` container
+(see `docker/run.sh`).
 
 ```bash
 # 1. local smoke (no cloud, no cost): boot the slim env and run one grasp
 "$ISAAC" tools/smoke_bt.py
 
-# 2. build + push the job image (Taskfile.yml holds the exact commands)
-task build:push
+# 2. build + push the job image (tag :roll — the tag every job script pulls)
+task image:build-push
 
 # 3. small validation job → confirm records land in your bucket & the job scales to zero
 task job:gen N=50 BATCH=50
@@ -78,7 +83,8 @@ task job:gen N=50 BATCH=50
 task job:gen N=5000 BATCH=200          # labelled grasp dataset
 task job:eval POLICY=heuristic         # "before" sort-success report
 bash job/stage1_materials.sh           # material × maneuver sweep (H100 jobs)
-bash job/chain_env_tune.sh             # env-in-the-loop pick tuning chain
+SEED_THETA='[0.4704,0.0288,0.0034,0.4,0.0018,0.0106,0.0022,0.0022,-5.55]' \
+  bash job/chain_env_tune.sh           # env-in-the-loop tuning chain (seed = the env-tuned θ from the reports)
 bash job/auto_relaunch_es.sh           # ES training with log-line checkpoints
 ```
 
@@ -97,7 +103,9 @@ in the report pages.
 | `tools/` | pick lab (CEM), env-in-the-loop tuner, residual-policy ES trainer, renderers, probes |
 | `lab/` | Isaac Lab port (vectorized sweeps) |
 | `data/reports/` | the engineering log — material physics, robustness training, co-optimization, the FEM detour |
-| `Dockerfile`, `docker/` | job image + CPU endpoint image |
+| `Dockerfile`, `docker/` | the Isaac Sim job image + local container helpers |
+| `endpoint/` | the `graspsvc` CPU Serverless Endpoint (app, Dockerfile, deploy script) |
+| `configs/` | material grids for the co-optimization sweeps |
 
 ## License
 

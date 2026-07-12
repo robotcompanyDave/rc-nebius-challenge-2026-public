@@ -6,6 +6,7 @@
 # rig-round-per-process leak ceiling. The CEM mean (MUθ) from each job seeds
 # the next, so the chain gives unlimited optimization depth at ~$1/job.
 # Stops early when the MU panel hits the target.
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
 set -uo pipefail
 export HOME="${HOME:-/tmp}"
 export PATH="$HOME/.nebius/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -15,7 +16,7 @@ TARGET_NUM="${TARGET_NUM:-11}"          # stop when MU panel >= TARGET_NUM/12
 SEED_THETA="${SEED_THETA:?set SEED_THETA}"
 PARENT="${NEBIUS_PROJECT_ID:?set NEBIUS_PROJECT_ID}"
 IMAGE="${NEBIUS_REGISTRY:?set NEBIUS_REGISTRY}/rc-grasp-sort:roll"
-OUT="${OUT:-$HOME/RC/rc-spike-nebius-basic/data/$(date +%F)/envtune}"
+OUT="${OUT:-$REPO/data/runs/envtune}"
 mkdir -p "$OUT"
 LOG="$OUT/chain.log"
 SIGS=(0.08 0.06 0.05 0.04 0.04 0.04)
