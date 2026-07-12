@@ -199,14 +199,14 @@ def read_logs(path):
 
 
 ATTEMPTS = [
-    {"id": "aijob-<redacted>", "gpu": "L40S", "platform": "gpu-l40s-d",
+    {"id": "aijob-████", "gpu": "L40S", "platform": "gpu-l40s-d",
      "preset": "1gpu-16vcpu-96gb", "region": "eu-north1", "advice": "on-demand Medium",
      "json": "job-final.json", "logs": "job-logs.txt",
      "note": "Isaac-ready target GPU. Provisioning ran ~12 min then the create operation "
              "failed with an internal error (code 13); job went to ERROR with no container logs — "
              "it never got a GPU. This is a real capacity signal, not a config problem "
              "(the H100 below, same image/command/region, ran fine)."},
-    {"id": "aijob-<redacted>", "gpu": "H100", "platform": "gpu-h100-sxm",
+    {"id": "aijob-████", "gpu": "H100", "platform": "gpu-h100-sxm",
      "preset": "1gpu-16vcpu-200gb", "region": "eu-north1", "advice": "on-demand High",
      "json": "job-h100.json", "logs": "job-h100-logs.txt",
      "note": "Control test to isolate the L40S failure. Same image / command / region."},
@@ -370,8 +370,8 @@ PARENT_ID={REGION_PROJECT['eu-west1']} \\
 nebius capacity resource-advice list --format json
 
 # this job's state + logs:
-nebius ai job get  aijob-<redacted>
-nebius ai job logs aijob-<redacted>
+nebius ai job get  aijob-████
+nebius ai job logs aijob-████
 </pre>
 </div>
 
