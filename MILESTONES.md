@@ -94,7 +94,7 @@ Resume exactly where the laptop left off.
 
 ## M1 — Nebius training lane  ⛔ BLOCKED (outage day 3)
 
-- [x] 50-attempt smoke probe (`aijob-e00chsjz12gehnm66x`, seed 999) —
+- [x] 50-attempt smoke probe (`aijob-<redacted>`, seed 999) —
       **FAILED with the outage signature** (~30 min PROVISIONING → ERROR 13,
       `instances: null`). Same as every job since 2026-07-01.
 - [x] 2026-07-03: **preemptible × cross-region sweep — ALL FAILED the same
