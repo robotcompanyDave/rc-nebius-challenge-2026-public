@@ -56,7 +56,19 @@ def main():
     bt = SortBT(env, ctrl, scorer=scorer, seed=SEED)
     res = bt.run()
 
-    os.makedirs(OUT, exist_ok=True)
+    global OUT
+    try:
+        os.makedirs(OUT, exist_ok=True)
+        with open(os.path.join(OUT, ".write_test"), "w") as _f:
+            _f.write("ok")
+        os.remove(os.path.join(OUT, ".write_test"))
+    except PermissionError:
+        # e.g. running inside the Isaac container against a host-owned mount:
+        # fall back to a writable location instead of dying after a good run.
+        import tempfile
+        OUT = os.path.join(tempfile.gettempdir(), "graspsort_smoke")
+        os.makedirs(OUT, exist_ok=True)
+        print(f"[smoke] output dir not writable, falling back to {OUT}", flush=True)
     bt.save_trace(os.path.join(OUT, "trace.jsonl"))
     summary = {"n_parts": res.n_parts, "n_correct": res.n_correct,
                "attempts": res.attempts, "per_part": res.per_part,
